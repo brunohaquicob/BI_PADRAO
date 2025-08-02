@@ -1,0 +1,111 @@
+.campo-invalido {
+  border-color: red;
+}
+
+.modal-80 {
+  max-width: 80% !important;
+  width: 80% !important;
+}
+
+.modal-90 {
+  max-width: 90% !important;
+  width: 90% !important;
+}
+
+.modal-100 {
+  max-width: 100% !important;
+  width: 100% !important;
+}
+
+.w100perc {
+  max-width: 100% !important;
+  width: 100% !important;
+}
+
+.borderTable {
+  padding-top: 2px;
+  padding-bottom: 2px;
+  border-bottom: 1px solid #C0C0C0;
+  border-collapse: collapse;
+}
+
+/* Loading */
+.overlay {
+  position: relative;
+}
+
+.overlay:before {
+  content: "";
+  display: block;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(255, 255, 255, 0.8);
+  z-index: 9999;
+}
+
+.overlay i {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+
+#loading-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#loading-spinner {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 4px solid #fff;
+  border-top-color: #00a65a;
+  animation: spin 1s infinite linear;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.sem-quebra td,
+.sem-quebra th {
+    white-space: nowrap;
+}
+.margem_cima20 {
+  margin-top: 20px;
+}
+.margem_cima10 {
+  margin-top: 10px;
+}
+.margem_cima50 {
+  margin-top: 5px;
+}
+.margem_baixo20 {
+  margin-bottom: 20px;
+}
+.margem_baixo10 {
+  margin-bottom: 10px;
+}
+.margem_baixo5 {
+  margin-bottom: 5px;
+}
+
+.table thead th {
+  text-align: center !important;
+  vertical-align: middle !important;
+  height: 40px;
+}

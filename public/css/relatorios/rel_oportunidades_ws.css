@@ -1,0 +1,226 @@
+@import url("https://code.highcharts.com/css/highcharts.css");
+@import url("https://code.highcharts.com/dashboards/css/datagrid.css");
+@import url("https://code.highcharts.com/dashboards/css/dashboards.css");
+
+#resultado-aba2 {
+    padding: 10px;
+    background-color: var(--highcharts-neutral-color-5);
+}
+
+.row {
+    display: flex;
+    flex-wrap: wrap;
+    flex-direction: row;
+}
+
+.cell {
+    flex: 1;
+    min-width: 20px;
+}
+
+.cell > .highcharts-dashboards-component {
+    position: relative;
+    margin: 10px;
+    background-clip: border-box;
+    background-color: var(--highcharts-background-color);
+}
+
+#kpi-wrapper {
+    display: flex;
+    flex-direction: column;
+}
+
+#kpi-wrapper,
+#dashboard-col-0,
+#dashboard-col-1,
+#dashboard-col-2,
+#dashboard-col-3 {
+    flex: 1;
+    min-width: 0;
+}
+
+#kpi-card1,
+#kpi-card2,
+#kpi-card3,
+#kpi-card4,
+#kpi-card5,
+#kpi-card6,
+#kpi-card7,
+#kpi-card8 {
+    flex-grow: 1;
+}
+
+h1#title {
+    padding-top: 10px;
+    margin: 0;
+    background-color: #3d3d3d;
+    text-align: center;
+    color: #fff;
+}
+
+#kpi-card1 .highcharts-dashboards-component-title::before,
+#kpi-card2 .highcharts-dashboards-component-title::before,
+#kpi-card3 .highcharts-dashboards-component-title::before,
+#kpi-card4 .highcharts-dashboards-component-title::before,
+#kpi-card5 .highcharts-dashboards-component-title::before,
+#kpi-card6 .highcharts-dashboards-component-title::before,
+#kpi-card7 .highcharts-dashboards-component-title::before,
+#kpi-card8 .highcharts-dashboards-component-title::before {
+    width: 14px;
+    height: 14px;
+    border-radius: 28px;
+    display: inline-block;
+    padding: 0;
+    margin-right: 4px;
+    background-color: var(--highcharts-color-0);
+    content: " ";
+}
+
+#kpi-card2 .highcharts-dashboards-component-title::before {
+    background-color: var(--highcharts-color-2);
+}
+#kpi-card3 .highcharts-dashboards-component-title::before {
+    background-color: var(--highcharts-color-4);
+}
+#kpi-card4 .highcharts-dashboards-component-title::before {
+    background-color: var(--highcharts-color-5);
+}
+#kpi-card5 .highcharts-dashboards-component-title::before {
+    background-color: var(--highcharts-color-6);
+}
+#kpi-card6 .highcharts-dashboards-component-title::before {
+    background-color: var(--highcharts-color-7);
+}
+#kpi-card7 .highcharts-dashboards-component-title::before {
+    background-color: var(--highcharts-color-8);
+}
+#kpi-card8 .highcharts-dashboards-component-title::before {
+    background-color: var(--highcharts-color-9);
+}
+
+#kpi-card1 .highcharts-dashboards-component-kpi-subtitle,
+#kpi-card2 .highcharts-dashboards-component-kpi-subtitle,
+#kpi-card3 .highcharts-dashboards-component-kpi-subtitle,
+#kpi-card4 .highcharts-dashboards-component-kpi-subtitle,
+#kpi-card5 .highcharts-dashboards-component-kpi-subtitle,
+#kpi-card6 .highcharts-dashboards-component-kpi-subtitle,
+#kpi-card7 .highcharts-dashboards-component-kpi-subtitle,
+#kpi-card8 .highcharts-dashboards-component-kpi-subtitle {
+    margin-top: 10px;
+    font-size: 1.2em;
+    color: var(--highcharts-neutral-color-60);
+}
+
+#kpi-card1 .highcharts-dashboards-component-kpi,
+#kpi-card2 .highcharts-dashboards-component-kpi,
+#kpi-card3 .highcharts-dashboards-component-kpi,
+#kpi-card4 .highcharts-dashboards-component-kpi,
+#kpi-card5 .highcharts-dashboards-component-kpi,
+#kpi-card6 .highcharts-dashboards-component-kpi,
+#kpi-card7 .highcharts-dashboards-component-kpi,
+#kpi-card8 .highcharts-dashboards-component-kpi {
+    margin-bottom: 10px;
+}
+
+#kpi-card1 .highcharts-dashboards-component-kpi-value,
+#kpi-card2 .highcharts-dashboards-component-kpi-value,
+#kpi-card3 .highcharts-dashboards-component-kpi-value,
+#kpi-card4 .highcharts-dashboards-component-kpi-value,
+#kpi-card5 .highcharts-dashboards-component-kpi-value,
+#kpi-card6 .highcharts-dashboards-component-kpi-value,
+#kpi-card7 .highcharts-dashboards-component-kpi-value,
+#kpi-card8 .highcharts-dashboards-component-kpi-value {
+    font-size: 2em;
+    line-height: 1.4rem;
+    margin-top: 10px;
+    color: var(--highcharts-color-0);
+    padding-bottom: 10px;
+}
+
+#kpi-card2 .highcharts-dashboards-component-kpi-value {
+    color: var(--highcharts-color-2);
+}
+#kpi-card3 .highcharts-dashboards-component-kpi-value {
+    color: var(--highcharts-color-4);
+}
+#kpi-card4 .highcharts-dashboards-component-kpi-value {
+    color: var(--highcharts-color-5);
+}
+#kpi-card5 .highcharts-dashboards-component-kpi-value {
+    color: var(--highcharts-color-6);
+}
+#kpi-card6 .highcharts-dashboards-component-kpi-value {
+    color: var(--highcharts-color-7);
+}
+#kpi-card7 .highcharts-dashboards-component-kpi-value {
+    color: var(--highcharts-color-8);
+}
+#kpi-card8 .highcharts-dashboards-component-kpi-value {
+    color: var(--highcharts-color-9);
+}
+
+#dashboard-col-1 .highcharts-color-0 {
+    fill: var(--highcharts-color-2);
+    stroke: var(--highcharts-color-2);
+}
+#dashboard-col-2 .highcharts-color-0 {
+    fill: var(--highcharts-color-4);
+    stroke: var(--highcharts-color-4);
+}
+
+#kpi-card1 .highcharts-dashboards-component-kpi-value::after,
+#kpi-card2 .highcharts-dashboards-component-kpi-value::after,
+#kpi-card3 .highcharts-dashboards-component-kpi-value::after,
+#kpi-card4 .highcharts-dashboards-component-kpi-value::after,
+#kpi-card5 .highcharts-dashboards-component-kpi-value::after,
+#kpi-card6 .highcharts-dashboards-component-kpi-value::after,
+#kpi-card7 .highcharts-dashboards-component-kpi-value::after,
+#kpi-card8 .highcharts-dashboards-component-kpi-value::after {
+    content: "";
+    display: block;
+    font-size: 1rem;
+}
+
+.highcharts-plot-line {
+    stroke-dasharray: 2px;
+    stroke: var(--highcharts-color-3);
+}
+
+.highcharts-plot-line-label {
+    fill: var(--highcharts-color-3);
+}
+
+.highcharts-description {
+    padding: 0 20px;
+}
+
+.highcharts-dashboards-component-kpi-content {
+    display: flex;
+    flex-direction: column;
+    padding: 10px !important;
+}
+
+.highcharts-dashboards-component-kpi {
+    min-height: 100px;
+    text-align: center;
+}
+
+@media (max-width: 992px) {
+    .row {
+        flex-direction: column;
+    }
+
+    #kpi-wrapper {
+        flex-direction: row;
+        flex: unset;
+        width: 100%;
+    }
+}
+
+@media (max-width: 576px) {
+    #dashboard-col-0,
+    #dashboard-col-1 {
+        flex: unset;
+        width: 100%;
+    }
+}
