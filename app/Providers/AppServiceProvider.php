@@ -87,7 +87,7 @@ class AppServiceProvider extends ServiceProvider {
                 'adminlte.logo' => config('custom.nome_bi_bruno', ''),
                 // 'adminlte.logo_img' => 'img/logo.png', // para o topo
                 'adminlte.logo_img' => 'img/' . ($empresa->app_img ?? 'logo.png'),
-                
+
                 //LOGIN
                 'adminlte.auth_logo.enabled'    => true,
                 'adminlte.auth_logo.img.path'   => 'img/' . ($empresa->app_img ?? 'logo.png'),
@@ -96,7 +96,7 @@ class AppServiceProvider extends ServiceProvider {
                 'adminlte.auth_logo.img.class'  => '',
                 'adminlte.auth_logo.img.width'  => 90,
                 'adminlte.auth_logo.img.height' => 90,
-                
+
                 //LOADING
                 'adminlte.preloader.enabled'    => true,
                 'adminlte.preloader.img.path'   => 'img/' . ($empresa->app_img ?? 'logo.png'),
@@ -149,7 +149,7 @@ class AppServiceProvider extends ServiceProvider {
                 ],
 
             ]);
-
+            
             // dd([
             //     'host_atual' => $host,
             //     'empresa' => $empresa,
@@ -157,7 +157,8 @@ class AppServiceProvider extends ServiceProvider {
             // ]);
         } catch (\Throwable $e) {
             if (!app()->runningInConsole()) {
-                abort(500, 'Erro ao identificar tenant: ' . $e->getMessage());
+                session()->flash('custom_error', 'Erro ao identificar empresa: ' . $e->getMessage());
+                abort(500);
             }
         }
     }
