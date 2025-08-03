@@ -44,6 +44,12 @@ class AppServiceProvider extends ServiceProvider {
             if (!$empresa) {
                 throw new \Exception('Empresa não encontrada');
             }
+
+            //Pra ajudar a saber em que base estou programando
+            if (strpos(strtoupper($host), "BI-PADRAO") !== false) {
+                $empresa->nome_bi_bruno .= "({$empresa->db_database})";
+            }
+
             DB::purge('mysql');
             Config::set('database.connections.mysql', [
                 'driver' => 'mysql',
