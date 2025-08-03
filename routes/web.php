@@ -1,5 +1,8 @@
 <?php
 
+use App\Http\Controllers\Permissao\RoleRouteViewController;
+use App\Http\Controllers\Permissao\RouteViewController;
+use App\Http\Controllers\Users\UserController;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
@@ -37,6 +40,23 @@ if (!app()->runningInConsole()) {
         Route::middleware(['auth', 'isSuperAdmin'])->group(function () {
             Route::get('/admin/executar-query', [App\Http\Controllers\Admin\AdminController::class, 'index'])->name('admin.executar-query');
             Route::post('/admin/executar-query', [App\Http\Controllers\Admin\AdminController::class, 'executar'])->name('admin.executar-query.post');
+
+            //Cadastros Usuario
+            Route::post('/users', [UserController::class, 'store'])->name('users.store');
+            Route::put('/users/{id}', [UserController::class, 'update'])->name('users.update');
+            Route::delete('/users/{id}', [UserController::class, 'destroy'])->name('users.destroy');
+            Route::get('/users/{id}/edit', [UserController::class, 'edit'])->name('users.edit');
+
+            Route::post('/user-views/ajax', [UserController::class, 'getUsuario'])->name('usuario.ajax');
+            Route::post('/user-views/update', [UserController::class, 'updateUsuario'])->name('usuario.ajax.editar');
+
+            //ROUTESxROLE
+            Route::post('/role-routes-views/ajax', [RoleRouteViewController::class, 'getRouteViewsByRole'])->name('role.routeview.ajax');
+            Route::post('/role-routes-views/editar', [RoleRouteViewController::class, 'updateRouteViewsByRole'])->name('role.routesview.ajax.editar');
+            //ROUTES
+            Route::post('/routes-views/ajax', [RouteViewController::class, 'getRouteViews'])->name('routeview.ajax');
+            Route::post('/routes-views/editar', [RouteViewController::class, 'InsertUpdateRouteViews'])->name('routeview.ajax.editar');
+            Route::post('/routes-views/delete', [RouteViewController::class, 'deleteRouteViews'])->name('routeview.ajax.delete');
         });
 
         //CARREGAR ROTAS DO BANCO DE DADOS

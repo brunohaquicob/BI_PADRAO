@@ -22,7 +22,6 @@ class PagesController extends Controller {
 
     public function __construct() {
         $this->middleware('auth');
-        $this->conns = new JallQueryExecutor(['JALL_PR']);
     }
 
     public function dashbord() {
@@ -67,6 +66,7 @@ class PagesController extends Controller {
         $data['nameView'] = $nameView->name;
         return view('pages.relatorios.rel_analise_carteiras', $data);
     }
+    
     public function rel_acordos_gerencial() {
 
         $dados = ControllerUtils::excutarChamadaApiAqc('get_canais_senff', "aqc_bi", [], $time, true);
