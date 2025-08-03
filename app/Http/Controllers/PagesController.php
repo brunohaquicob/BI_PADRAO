@@ -26,13 +26,27 @@ class PagesController extends Controller {
     }
 
     public function dashbord() {
-        if (Auth::check()) {
-            $routeName = Route::currentRouteName();
-            $nameView = RouteView::where('route_name', $routeName)->first();
-            $data['nameView'] = $nameView->name;
-            return view('pages.dashboards.dashboard_padrao', $data);
-        } else {
+        if (!Auth::check()) {
             return redirect()->route('login');
+        }
+
+        $empresa = app('empresa');
+
+        $routeName = Route::currentRouteName();
+        $nameView = RouteView::where('route_name', $routeName)->first();
+        $data['nameView'] = $nameView->name ?? 'Dashboard';
+        // dd($empresa);
+        switch (trim(strtoupper($empresa->app_name))) {
+            case 'PADRAO':
+                return view('pages.dashboards.dashboard_padrao', $data);
+            case 'VERTEX':
+                return view('pages.dashboards.dashboard_padrao', $data);
+            case 'SOLUT':
+                return view('pages.dashboards.dashboard_padrao', $data);
+            case 'NACIONAL':
+                return view('pages.dashboards.dashboard_padrao', $data);
+            default:
+                return view('pages.dashboards.dashboard_padrao', $data);
         }
     }
 
@@ -150,7 +164,7 @@ class PagesController extends Controller {
     public function credor_dash_carteira_desempenho() {
         if (Auth::check()) {
 
-           $dados = ControllerUtils::excutarChamadaApiAqc('get_lojas', "aqc_bi_padrao", [], $time, true);
+            $dados = ControllerUtils::excutarChamadaApiAqc('get_lojas', "aqc_bi_padrao", [], $time, true);
             //dd($dados);
             if (!isset($dados['retorno']) || $dados['retorno'] === false) {
                 return redirect()->route('unauthorized')->withErrors(['error' => "Erro ao buscar dados API AQC: " . $dados['mensagem']]);
@@ -176,7 +190,7 @@ class PagesController extends Controller {
         }
     }
 
-     public function credor_dash_carteira_pagamento() {
+    public function credor_dash_carteira_pagamento() {
         if (Auth::check()) {
 
             $dados = ControllerUtils::excutarChamadaApiAqc('get_lojas', "aqc_bi_padrao", [], $time, true);

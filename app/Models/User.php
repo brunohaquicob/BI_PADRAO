@@ -23,7 +23,8 @@ class User extends Authenticatable {
         'session_id',
         'role_id',
         'active', //S N B
-        'allowed_ip'
+        'allowed_ip',
+        'default_route'
     ];
 
     /**

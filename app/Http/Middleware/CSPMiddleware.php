@@ -48,6 +48,7 @@ class CSPMiddleware {
             "https://fonts.googleapis.com",
             "https://code.ionicframework.com",
             "https://code.highcharts.com",
+            "https://cdnjs.cloudflare.com"
         ];
 
         // Monta a CSP

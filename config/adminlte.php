@@ -457,6 +457,26 @@ return [
                 ],
             ],
         ],
+        'ladda' => [
+            'active' => true,
+            'files' => [
+                [
+                    'type' => 'css',
+                    'asset' => false,
+                    'location' => 'https://cdnjs.cloudflare.com/ajax/libs/Ladda/1.0.6/ladda-themeless.min.css',
+                ],
+                [
+                    'type' => 'js',
+                    'asset' => false,
+                    'location' => 'https://cdnjs.cloudflare.com/ajax/libs/Ladda/1.0.6/spin.min.js',
+                ],
+                [
+                    'type' => 'js',
+                    'asset' => false,
+                    'location' => 'https://cdnjs.cloudflare.com/ajax/libs/Ladda/1.0.6/ladda.min.js',
+                ],
+            ],
+        ],
         'multiselect-bs4' => [
             'active' => true,
             'files' => [

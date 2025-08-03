@@ -714,6 +714,24 @@ function arrumaResizeDataTable(id_tabela, table) {
         }
     });
 }
+//LADDA
+function startLadda(targetSelector) {
+    const buttons = document.querySelectorAll(targetSelector);
+    buttons.forEach(button => {
+        const laddaInstance = Ladda.create(button);
+        button._laddaInstance = laddaInstance; // guarda a instância
+        laddaInstance.start();
+    });
+}
+
+function stopLadda(targetSelector) {
+    const buttons = document.querySelectorAll(targetSelector);
+    buttons.forEach(button => {
+        if (button._laddaInstance) {
+            button._laddaInstance.stop();
+        }
+    });
+}
 
 //Apos carregar a pagina
 $(function () {
