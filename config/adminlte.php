@@ -87,16 +87,16 @@ return [
     |
     */
 
-    'auth_logo' => [
-        'enabled' => true,
-        'img' => [
-            'path' => 'vendor/adminlte/dist/img/jallbanner90x90.png',
-            'alt' => 'Auth Logo',
-            'class' => '',
-            'width' => 50,
-            'height' => 50,
-        ],
-    ],
+    // 'auth_logo' => [
+    //     'enabled' => true,
+    //     'img' => [
+    //         'path' => 'vendor/adminlte/dist/img/jallbanner90x90.png',
+    //         'alt' => 'Auth Logo',
+    //         'class' => '',
+    //         'width' => 50,
+    //         'height' => 50,
+    //     ],
+    // ],
 
     /*
     |--------------------------------------------------------------------------

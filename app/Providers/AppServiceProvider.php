@@ -82,11 +82,36 @@ class AppServiceProvider extends ServiceProvider {
 
             App::instance('empresa', $empresa);
 
+            // config([
+            //     'adminlte.title' => 'BI ' . ($empresa->nome_bi_bruno ?? 'GENÉRICO'),
+            //     'adminlte.logo' => '<b>BI</b> ' . config('custom.nome_bi_bruno', ''),
+            //     // 'adminlte.logo_img' => 'img/' . ($empresa->app_img ?? 'logo_padrao.png'),
+            //     'adminlte.logo_img' => 'img/logo_padrao.png',
+            //     'adminlte.auth_logo.img.path' => 'img/logo_padrao.png',
+            //     // 'adminlte.logo_img' => 'vendor/adminlte/dist/img/jallbanner90x90.png',
+            // ]);
+
             config([
                 'adminlte.title' => 'BI ' . ($empresa->nome_bi_bruno ?? 'GENÉRICO'),
-                'adminlte.logo' => '<b>BI</b> ' . config('custom.nome_bi_bruno', ''),
-                'adminlte.logo_img' => 'vendor/adminlte/dist/img/' . ($empresa->app_img ?? 'jallbanner90x90.png'),
-                // 'adminlte.logo_img' => 'vendor/adminlte/dist/img/jallbanner90x90.png',
+                'adminlte.logo' => config('custom.nome_bi_bruno', ''),
+                // 'adminlte.logo_img' => 'img/logo.png', // para o topo
+                'adminlte.logo_img' => 'img/' . ($empresa->app_img ?? 'logo.png'),
+                
+                'adminlte.auth_logo.enabled'    => true,
+                'adminlte.auth_logo.img.path'   => 'img/' . ($empresa->app_img ?? 'logo.png'),
+                'adminlte.auth_logo.img.alt'    => '',
+                // 'adminlte.auth_logo.img.class' => 'elevation-3',
+                'adminlte.auth_logo.img.class'  => '',
+                'adminlte.auth_logo.img.width'  => 90,
+                'adminlte.auth_logo.img.height' => 90,
+
+                'adminlte.preloader.enabled'    => true,
+                'adminlte.preloader.img.path'   => 'img/' . ($empresa->app_img ?? 'logo.png'),
+                'adminlte.preloader.img.alt'    => 'Loading',
+                'adminlte.preloader.img.effect' => 'animation__shake',
+                'adminlte.preloader.img.width'  => 90,
+                'adminlte.preloader.img.height' => 90,
+
             ]);
 
             // dd([
