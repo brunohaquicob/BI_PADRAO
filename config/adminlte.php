@@ -14,7 +14,8 @@ return [
     |
     */
 
-    'title' => 'BI ' . env('NOME_BI_BRUNO', ''),
+    // 'title' => 'BI ' . env('NOME_BI_BRUNO', ''),
+    // 'title' => 'BI ' . config('custom.nome_bi_bruno', ''),
     'title_prefix' => '',
     'title_postfix' => '',
 
@@ -63,8 +64,10 @@ return [
     |
     */
 
-    'logo' => '<b>Bi</b> ' . env('NOME_BI_BRUNO', ''),
-    'logo_img' => 'vendor/adminlte/dist/img/jallbanner90x90.png',
+    // 'logo' => '<b>Bi</b> ' . env('NOME_BI_BRUNO', ''),
+    // 'logo' => '<b>BI</b> ' . config('custom.nome_bi_bruno', ''),
+    // 'logo_img' => 'vendor/adminlte/dist/img/' . config('custom.app_img', 'default.png'),
+    // 'logo_img' => 'vendor/adminlte/dist/img/jallbanner90x90.png',
     'logo_img_class' => 'brand-image text-center',
     //'logo_img_class' => 'brand-image img-circle  elevation-3',
     'logo_img_xl' => null,
