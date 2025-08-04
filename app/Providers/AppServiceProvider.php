@@ -46,7 +46,7 @@ class AppServiceProvider extends ServiceProvider {
             }
 
             //Pra ajudar a saber em que base estou programando
-            if (strpos(strtoupper($host), "BI-PADRAO") !== false) {
+            if (strpos(strtoupper($empresa->app_name), "PADRAO") !== false) {
                 $empresa->nome_bi_bruno .= "({$empresa->db_database})";
             }
 
