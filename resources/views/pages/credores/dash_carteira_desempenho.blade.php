@@ -130,24 +130,24 @@
 
                         <div class="container-fluid">
                             <div class="row">
-                                <div class="col-lg-2 col-4">
+                                <div class="col-3">
                                     <x-boxdynamic-component component-name="smallbox" identificador="1" color="lightblue" icon="ion ion-social-usd" text1="0" text2="Valor Implantado." />
                                 </div>
-                                <div class="col-lg-2 col-4">
-                                    <x-boxdynamic-component component-name="smallbox" identificador="2" color="lightblue" icon="ion ion-social-usd" text1="0" text2="Valor Recuperado." />
+                                <div class="col-3">
+                                    <x-boxdynamic-component component-name="smallbox" identificador="2" color="success" icon="ion ion-social-usd" text1="0" text2="Valor Recuperado." />
                                 </div>
-                                <div class="col-lg-2 col-4">
+                                {{-- <div class="col-2">
                                     <x-boxdynamic-component component-name="smallbox" identificador="3" color="success" icon="ion ion-arrow-graph-up-right" text1="0" text2="% Recuperado." />
-                                </div>
-                                <div class="col-lg-2 col-4">
+                                </div> --}}
+                                <div class="col-3">
                                     <x-boxdynamic-component component-name="smallbox" identificador="4" color="info" icon="ion ion-pricetags" text1="0" text2="Contratos Implantados." />
                                 </div>
-                                <div class="col-lg-2 col-4">
-                                    <x-boxdynamic-component component-name="smallbox" identificador="5" color="info" icon="ion ion-pricetags" text1="0" text2="Contratos Recuperados." />
+                                <div class="col-3">
+                                    <x-boxdynamic-component component-name="smallbox" identificador="5" color="success" icon="ion ion-pricetags" text1="0" text2="Contratos Recuperados." />
                                 </div>
-                                <div class="col-lg-2 col-4">
+                                {{-- <div class="col-2">
                                     <x-boxdynamic-component component-name="smallbox" identificador="6" color="success" icon="ion ion-arrow-graph-up-right" text1="0" text2="% Recuperado." />
-                                </div>
+                                </div> --}}
                             </div>
 
                             <div class="row">
@@ -339,10 +339,11 @@
 
                 animarNumeroBRL('#smallbox1-1', 0, implantado.I, 3000, 2, '');
                 animarNumeroBRL('#smallbox2-1', 0, implantado.R, 3000, 2, '');
-                animarNumeroBRL('#smallbox3-1', 0, (implantado.I > 0 ? (implantado.R / implantado.I * 100) : 0), 3000, 2, '', ' %');
+                animarNumeroBRL('#smallbox2-2', 0, (implantado.I > 0 ? (implantado.R / implantado.I * 100) : 0), 3000, 2, 'Valor Recuperado (<b>', '%</b>)');
+
                 animarNumeroBRL('#smallbox4-1', 0, implantado.C, 3000, 0, '');
                 animarNumeroBRL('#smallbox5-1', 0, (implantado.C - implantado.CA), 3000, 0, '');
-                animarNumeroBRL('#smallbox6-1', 0, (implantado.C > 0 ? ((implantado.C - implantado.CA) / implantado.C * 100) : 0), 3000, 2, '', ' %');
+                animarNumeroBRL('#smallbox5-2', 0, (implantado.C > 0 ? ((implantado.C - implantado.CA) / implantado.C * 100) : 0), 3000, 2, 'Contratos Recuperados (<b>', '%</b>)');
 
                 //console.log(ar_data_valor);
                 //console.log(ar_fase_valor);

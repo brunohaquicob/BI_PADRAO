@@ -559,7 +559,7 @@ function animarNumeroBRL(elemento, valorInicial, valorFinal, duracao = 2000, dec
         if (tag === "input" || tag === "textarea" || tag === "select") {
             el.val(valorFormatado);
         } else {
-            el.text(valorFormatado);
+            el.html(valorFormatado);
         }
     }
 
