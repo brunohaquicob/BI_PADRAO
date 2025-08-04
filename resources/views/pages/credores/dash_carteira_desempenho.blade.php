@@ -471,7 +471,7 @@
                             type: 'column',
                             data: arrR,
                             decimals: 2,
-                            prefix: 'R$',
+                            prefix: 'R$ ',
                             suffix: '',
                             position: 'right',
                             axisGroup: 'moneyL',
