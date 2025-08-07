@@ -193,12 +193,13 @@ class CredoresController extends Controller {
         $sub_pasta_resquest = "credor_dash_gerencial_acordos";
         try {
 
-            $ar_fields['tipo_consulta']     = 'required|string';
-            $ar_fields['tipo_data']         = 'required|string';
-            $ar_fields['cancelados']        = 'required|string';
-            $ar_fields['tipo_dados']        = 'required|string';
-            $ar_fields['rel_equipe_loja']   = 'nullable|array';
-            $ar_fields['cpf_cnpj']          = 'nullable|string';
+            $ar_fields['tipo_consulta']         = 'required|string';
+            $ar_fields['tipo_data']             = 'required|string';
+            $ar_fields['cancelados']            = 'required|string';
+            $ar_fields['tipo_dados']            = 'required|string';
+            $ar_fields['rel_equipe_loja']       = 'required|array';
+            $ar_fields['rel_tipo_agrupamento']  = 'required|string';
+            $ar_fields['cpf_cnpj']              = 'nullable|string';
 
             $ar_fields['rangedatas']        = 'required|array';
             $ar_fields['rangedatas.*']      = 'date_format:Y-m-d';
@@ -225,6 +226,7 @@ class CredoresController extends Controller {
                 "tipo_data"             => $dadosTratados['tipo_data'],
                 "cancelados"            => $dadosTratados['cancelados'],
                 "tipo_dados"            => $dadosTratados['tipo_dados'],
+                "rel_tipo_agrupamento"  => $dadosTratados['rel_tipo_agrupamento'],
                 "rel_equipe_loja"       => !empty($dadosTratados['rel_equipe_loja']) ? $dadosTratados['rel_equipe_loja'] : [],
             ];
 

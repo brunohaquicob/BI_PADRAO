@@ -65,7 +65,7 @@
                         <div class="form-group">
                             <label for="rel_carteira">Equipe Loja:</label>
 
-                            <select class="form-control multiselect-bs4" id="rel_carteira" name="rel_carteira[]" multiple="multiple">
+                            <select class="form-control multiselect-bs4" id="rel_carteira" name="rel_carteira[]" multiple="multiple" required="true">
                                 @php
                                     $grouped = collect($equipe_lojas)->groupBy('grupo');
                                 @endphp
@@ -140,10 +140,10 @@
                                     <x-boxdynamic-component component-name="smallbox" identificador="3" color="success" icon="ion ion-arrow-graph-up-right" text1="0" text2="% Recuperado." />
                                 </div> --}}
                                 <div class="col-3">
-                                    <x-boxdynamic-component component-name="smallbox" identificador="4" color="info" icon="ion ion-pricetags" text1="0" text2="Contratos Implantados." />
+                                    <x-boxdynamic-component component-name="smallbox" identificador="4" color="info" icon="ion ion-pricetags" text1="0" text2="Devedores Implantados." />
                                 </div>
                                 <div class="col-3">
-                                    <x-boxdynamic-component component-name="smallbox" identificador="5" color="success" icon="ion ion-pricetags" text1="0" text2="Contratos Recuperados." />
+                                    <x-boxdynamic-component component-name="smallbox" identificador="5" color="success" icon="ion ion-pricetags" text1="0" text2="Devedores Recuperados." />
                                 </div>
                                 {{-- <div class="col-2">
                                     <x-boxdynamic-component component-name="smallbox" identificador="6" color="success" icon="ion ion-arrow-graph-up-right" text1="0" text2="% Recuperado." />
@@ -343,7 +343,7 @@
 
                 animarNumeroBRL('#smallbox4-1', 0, implantado.C, 3000, 0, '');
                 animarNumeroBRL('#smallbox5-1', 0, (implantado.C - implantado.CA), 3000, 0, '');
-                animarNumeroBRL('#smallbox5-2', 0, (implantado.C > 0 ? ((implantado.C - implantado.CA) / implantado.C * 100) : 0), 3000, 2, 'Contratos Recuperados (<b>', '%</b>)');
+                animarNumeroBRL('#smallbox5-2', 0, (implantado.F > 0 ? ((implantado.F - implantado.FA) / implantado.F * 100) : 0), 3000, 2, 'Devedores Recuperados (<b>', '%</b>)');
 
                 //console.log(ar_data_valor);
                 //console.log(ar_fase_valor);

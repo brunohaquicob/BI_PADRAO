@@ -50,7 +50,7 @@
                     <div class="col-md-4">
                         <div class="form-group">
                             <label for="rel_equipe_loja">Equipe/Loja:</label>
-                            <select class="form-control selectPickerNovo" id="rel_equipe_loja" name="rel_equipe_loja[]" multiple="multiple">
+                            <select class="form-control selectPickerNovo" id="rel_equipe_loja" name="rel_equipe_loja[]" multiple="multiple" required="true">
                                 @php
                                     $grouped = collect($equipes_loja)->groupBy('grupo');
                                 @endphp
@@ -78,7 +78,7 @@
                 </div>
                 <div class="row">
 
-                    <div class="col-md-4">
+                    <div class="col-md-3">
                         <div class="form-group">
                             <label for="tipo_dados">Tipo Resultados:</label>
                             <select class="form-control" id="tipo_dados" name="tipo_dados" required="true">
@@ -87,7 +87,16 @@
                             </select>
                         </div>
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-3">
+                        <div class="form-group">
+                            <label for="rel_tipo_agrupamento">Agrupar por:</label>
+                            <select class="form-control " id="rel_tipo_agrupamento" name="rel_tipo_agrupamento">
+                                <option value="E" selected="">Equipe</option>
+                                <option value="L">Loja</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
                         <div class="form-group">
                             <label for="tipo_data">Tipo Agrupador:</label>
                             <select class="form-control" id="tipo_data" name="tipo_data" required="true">
@@ -96,7 +105,7 @@
                             </select>
                         </div>
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-3">
                         <div class="form-group">
                             <label for="cancelados">Incluir Cancelados:</label>
                             <select class="form-control" id="cancelados" name="cancelados" required="true">
