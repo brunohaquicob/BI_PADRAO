@@ -37,7 +37,7 @@ class DashboardPadraoController extends Controller {
 
             $dados = [];
 
-            $dados_request = ControllerUtils::excutarChamadaApiAqc('dash_acordos', "aqc_bi_nnc", ["data_ini" => $this->dataInicial, "data_fim" => $this->dataFinal], $this->tempo_execucao, true);
+            $dados_request = ControllerUtils::excutarChamadaApiAqc('dash_acordos', "aqc_bi_padrao", ["data_ini" => $this->dataInicial, "data_fim" => $this->dataFinal], $this->tempo_execucao, true);
             
             if($dados_request['retorno'] === false){
                 return ControllerUtils::jsonResponse(false, [], $dados_request['mensagem']);

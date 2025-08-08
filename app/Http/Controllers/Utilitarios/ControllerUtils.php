@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Utilitarios;
 
+use App\Exceptions\ObrigatoriosException;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Users\EmpresaController;
 use App\Models\Empresa;
@@ -84,6 +85,25 @@ class ControllerUtils extends Controller {
                 $html .= '</div>';
             }
             throw new Exception($html, 1);
+        } catch (\Exception $e) {
+            throw new Exception($e->getMessage(), 1);;
+        }
+    }
+    public static function validateRequestObrigatorios(Request $request, array $ar_fields) {
+        try {
+            return $request->validate($ar_fields);
+        } catch (ValidationException $e) {
+            // Acesso aos erros de validação
+            $html = '';
+            foreach ($e->errors() as $field => $messages) {
+                $html .= '<div class="callout callout-danger">';
+                $html .= '<h4>' . ucfirst(str_replace('password', 'senha', $field)) . '</h4>';
+                foreach ($messages as $message) {
+                    $html .= '<p><small>' . str_replace('password', 'senha', $message) . '</small></p>';
+                }
+                $html .= '</div>';
+            }
+            throw new ObrigatoriosException($html, 1);
         } catch (\Exception $e) {
             throw new Exception($e->getMessage(), 1);;
         }
@@ -331,7 +351,7 @@ class ControllerUtils extends Controller {
                     return $data;
                 } else {
                     // Trate o erro caso a resposta não seja um JSON válido
-                    // dd($response->body());
+                    dd($response->body());
                     throw new \Exception('Resposta da API não é um JSON válido. Conteúdo recebido: ' . substr($responseData, 0, 500));
                 }
             } else {
@@ -426,5 +446,10 @@ class ControllerUtils extends Controller {
         }
 
         return $meses;
+    }
+
+    public static function erroAbort($msg, $codigo = 500) {
+        session()->flash('custom_error', 'Erro: ' . $msg);
+        abort($codigo);
     }
 }

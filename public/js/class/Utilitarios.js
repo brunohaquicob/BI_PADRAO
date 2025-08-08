@@ -263,6 +263,46 @@ class Utilitarios {
         return out;
     }
 
+    static sumColumnsFormula(rows, valueCols, keyCol) {
+        const toNum = v => Number(v) || 0;
+
+        const labels = Object.entries(valueCols);
+
+        const makeZeroObj = () =>
+            Object.fromEntries(labels.map(([label]) => [label, 0]));
+
+        // Helper: avalia fórmula tipo "6-5+4"
+        const evalExpr = (expr, row) => {
+            const safeExpr = expr.replace(/(\d+)/g, 'toNum(row[$1])');
+            return eval(safeExpr); // ← confia nas colunas (não é user input!)
+        };
+
+        if (keyCol == null) {
+            const total = makeZeroObj();
+            for (const r of rows) {
+                for (const [label, col] of labels) {
+                    total[label] += typeof col === 'string'
+                        ? evalExpr(col, r)
+                        : toNum(r[col]);
+                }
+            }
+            return total;
+        }
+
+        const out = {};
+        for (const r of rows) {
+            const key = r[keyCol];
+            const acc = (out[key] ||= makeZeroObj());
+            for (const [label, col] of labels) {
+                acc[label] += typeof col === 'string'
+                    ? evalExpr(col, r)
+                    : toNum(r[col]);
+            }
+        }
+        return out;
+    }
+
+
 
     /**
      * Soma colunas pelo nome (baseado no cabeçalho na primeira linha).

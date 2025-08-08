@@ -271,8 +271,8 @@ function gerarSelectPicker2(obj = ".selectpicker", opt = {}) {
         actionsBox: true,
         dropupAuto: false,
         size: 10,
-        deselectAllText: "Desmarcar Todos",
-        selectAllText: "Selecionar Todos",
+        deselectAllText: "Desmarcar",
+        selectAllText: "Todos",
         showTick: true,
         liveSearch: true,
         // width: "100%",
@@ -678,6 +678,25 @@ function carregarCoresGraficos() {
         ]
     });
 }
+
+function carregarCoresGraficosHapvida(){
+    Highcharts.setOptions({
+        colors: [
+            '#3c8dbc',
+            '#dc3545',
+            '#3d9970',
+            '#6c757d',
+            '#f9a825',
+            '#605ca8',
+            '#007bff',
+            '#880e4f', // Vinho escuro
+            '#00695c', // Verde petróleo
+            '#17a2b8', // Laranja queimado
+            '#e65100', // Laranja escuro
+        ]
+    });
+}
+
 function arrumaResizeDataTable(id_tabela, table) {
     const ns = `.dtFix-${id_tabela}`; // namespace pros eventos
     // jQuery para poder remover fácil (namespaced)

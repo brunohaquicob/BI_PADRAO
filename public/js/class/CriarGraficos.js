@@ -1079,4 +1079,171 @@ class HighchartsFlexible {
     }
 }
 
+class HighchartsFlexible2 {
+    constructor(options) {
+        this.options = Object.assign({
+            container: 'container',
+            chartType: 'spline',
+            title: '',
+            subtitle: '',
+            seriesPerc: null, // ← default
+            colors: null, //['#6CF', '#39F', '#06C', '#036', '#000'],
+            xAxis: {
+                type: 'datetime', // 'datetime' | 'category' | 'linear'
+                title: 'X Axis',
+                dateTimeLabelFormats: {
+                    month: '%e. %b',
+                    year: '%b'
+                },
+                categories: null // se for category
+            },
+            yAxis: {
+                title: 'Y Axis',
+                min: 0
+            },
+            tooltip: {
+                decimals: 2
+            },
+            plotOptions: {
+                series: {
+                    marker: {
+                        symbol: 'circle',
+                        fillColor: 'var(--highcharts-background-color, #ffffff)',
+                        enabled: true,
+                        radius: 2.5,
+                        lineWidth: 1,
+                        lineColor: null
+                    }
+                }
+            },
+            series: []
+        }, options);
+    }
+
+    build() {
+        const cfg = {
+            chart: { type: this.options.chartType },
+            title: { text: this.options.title },
+            subtitle: { text: this.options.subtitle },
+            // colors: this.options.colors,
+            ...(this.options.colors ? { colors } : {}),
+            xAxis: this._buildXAxis(),
+            yAxis: this.options.yAxis,
+            tooltip: this._buildTooltip(),
+            plotOptions: this.options.plotOptions,
+            series: this._prepareSeries()
+        };
+
+        this.chart = Highcharts.chart(this.options.container, cfg);
+        return this.chart;
+    }
+
+    _buildXAxis() {
+        const x = this.options.xAxis;
+        const base = { title: { text: x.title || '' } };
+
+        if (x.type === 'datetime') {
+            return Object.assign({}, base, {
+                type: 'datetime',
+                dateTimeLabelFormats: x.dateTimeLabelFormats || {
+                    month: '%e. %b',
+                    year: '%b'
+                }
+            });
+        }
+
+        if (x.type === 'category') {
+            return Object.assign({}, base, {
+                type: 'category',
+                categories: x.categories || []
+            });
+        }
+
+        return Object.assign({}, base, { type: 'linear' });
+    }
+
+    _prepareSeries() {
+        const xType = this.options.xAxis.type;
+        return this.options.series.map(s => {
+            if (!s.data) s.data = [];
+            if (xType === 'datetime') {
+                s.data = s.data.map(([x, y]) => [Date.parse(x), y]);
+            }
+            return s;
+        });
+    }
+
+    _buildTooltip() {
+        const seriesMeta = this.options.series;
+        const xType = this.options.xAxis?.type ?? 'category';
+        const seriesPerc = this.options.seriesPerc || [];
+        const defaultDecimals = this.options?.tooltip?.decimals ?? 2;
+
+        return {
+            shared: true,
+            useHTML: true,
+            borderWidth: 0,
+            formatter: function () {
+                const fmtNumber = (v, dec) =>
+                    new Intl.NumberFormat('pt-BR', {
+                        minimumFractionDigits: dec ?? 0,
+                        maximumFractionDigits: dec ?? 0
+                    }).format(v);
+
+                let keyLabel = this.key;
+                if (xType === 'datetime') {
+                    keyLabel = Highcharts.dateFormat('%e. %b %Y', this.x);
+                }
+
+                let totalGeral = 0;
+                let totalBase = 0;
+                const pontos = [];
+
+                this.points.forEach(p => {
+                    totalGeral += (p.y || 0);
+                    const isBase = seriesPerc.includes(p.series.name);
+                    if (isBase) {
+                        totalBase += (p.y || 0);
+                    }
+                    pontos.push({ ...p, isBase });
+                });
+
+                let html = `<div class="panel panel-default" style="min-width:230px;margin:0;">
+                <div class="panel-heading" style="font-weight:bold; text-align:center; padding:5px 10px;">
+                    ${keyLabel}
+                </div>
+                <div class="list-group" style="margin:0;">`;
+
+                pontos.forEach(point => {
+                    const serie = seriesMeta.find(s => s.name === point.series.name) || {};
+                    const dec = serie.decimals ?? defaultDecimals;
+                    const valueStr = fmtNumber(point.y, dec);
+                    const suffix = serie.suffix || '';
+                    const prefix = serie.prefix || '';
+
+                    let percStr = '';
+                    if (!point.isBase && totalBase) {
+                        const perc = (point.y / totalBase * 100);
+                        percStr = `<small class="text-muted">(${perc.toLocaleString('pt-BR', {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2
+                        })}%)</small>`;
+                    }
+
+                    html += `<div class="list-group-item" style="display:flex;justify-content:space-between;align-items:center;padding:5px 10px;">
+                    <span><span style="color:${point.color}">\u25CF</span> ${point.series.name}</span>
+                    <span>&nbsp;&nbsp;<b>${prefix}${valueStr}${suffix}</b> ${percStr}</span>
+                </div>`;
+                });
+
+                if (!seriesPerc?.length) {
+                    const totalStr = fmtNumber(totalGeral, defaultDecimals);
+                    html += `<div class="list-group-item" style="font-weight:bold;text-align:right;">Total: ${totalStr}</div>`;
+                }
+                return html;
+            }
+        };
+    }
+
+}
 
