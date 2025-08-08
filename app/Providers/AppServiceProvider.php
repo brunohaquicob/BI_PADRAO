@@ -50,6 +50,10 @@ class AppServiceProvider extends ServiceProvider {
                 $empresa->nome_bi_bruno .= "({$empresa->db_database})";
             }
 
+            if($empresa->ativo === 0 || $empresa->ativo === false){
+                throw new \Exception("Acesso bloqueado, contate o suporte.", 1);
+            }
+
             DB::purge('mysql');
             Config::set('database.connections.mysql', [
                 'driver' => 'mysql',
@@ -157,7 +161,7 @@ class AppServiceProvider extends ServiceProvider {
             // ]);
         } catch (\Throwable $e) {
             if (!app()->runningInConsole()) {
-                session()->flash('custom_error', 'Erro ao identificar empresa: ' . $e->getMessage());
+                session()->flash('custom_error', 'Erro: ' . $e->getMessage());
                 abort(500);
             }
         }
