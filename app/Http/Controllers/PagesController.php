@@ -164,20 +164,20 @@ class PagesController extends Controller {
     public function credor_dash_carteira_desempenho() {
         if (Auth::check()) {
 
-            $dados = ControllerUtils::excutarChamadaApiAqc('get_lojas', "aqc_bi_padrao", [], $time, true);
+            $dados_loja = ControllerUtils::excutarChamadaApiAqc('get_lojas', "aqc_bi_padrao", [], $time, true);
             //dd($dados);
-            if (!isset($dados['retorno']) || $dados['retorno'] === false) {
-                return redirect()->route('unauthorized')->withErrors(['error' => "Erro ao buscar dados API AQC: " . $dados['mensagem']]);
+            if (!isset($dados_loja['retorno']) || $dados_loja['retorno'] === false) {
+                return redirect()->route('unauthorized')->withErrors(['error' => "Erro ao buscar dados API AQC: " . $dados_loja['mensagem']]);
             }
 
-            $dados = ControllerUtils::excutarChamadaApiAqc('get_lojas_equipe', "aqc_bi_padrao", [], $time, true);
+            $dados = ControllerUtils::excutarChamadaApiAqc('get_equipe_loja', "aqc_bi_credores", ["and_where" => ""], $time, true);
             //dd($dados);
             if (!isset($dados['retorno']) || $dados['retorno'] === false) {
                 return redirect()->route('unauthorized')->withErrors(['error' => "Erro ao buscar dados API AQC: " . $dados['mensagem']]);
             }
 
             $data = [
-                'lojas' => $dados['dados'],
+                'lojas' => $dados_loja['dados'],
                 'equipe_lojas' => $dados['dados'],
             ];
 
@@ -192,23 +192,19 @@ class PagesController extends Controller {
 
     public function credor_dash_carteira_pagamento() {
         if (Auth::check()) {
-
+            $data = [];
+            $dados = ControllerUtils::excutarChamadaApiAqc('get_equipe_loja', "aqc_bi_credores", ["and_where" => ""], $time, true);
+            //dd($dados);
+            if (!isset($dados['retorno']) || $dados['retorno'] === false) {
+                return redirect()->route('unauthorized')->withErrors(['error' => "Erro ao buscar dados API AQC: " . $dados['mensagem']]);
+            }
+            $data['equipe_lojas'] = $dados['dados'];
             $dados = ControllerUtils::excutarChamadaApiAqc('get_lojas', "aqc_bi_padrao", [], $time, true);
             //dd($dados);
             if (!isset($dados['retorno']) || $dados['retorno'] === false) {
                 return redirect()->route('unauthorized')->withErrors(['error' => "Erro ao buscar dados API AQC: " . $dados['mensagem']]);
             }
-
-            $dados = ControllerUtils::excutarChamadaApiAqc('get_lojas_equipe', "aqc_bi_padrao", [], $time, true);
-            //dd($dados);
-            if (!isset($dados['retorno']) || $dados['retorno'] === false) {
-                return redirect()->route('unauthorized')->withErrors(['error' => "Erro ao buscar dados API AQC: " . $dados['mensagem']]);
-            }
-
-            $data = [
-                'lojas' => $dados['dados'],
-                'equipe_lojas' => $dados['dados'],
-            ];
+            $data['lojas'] = $dados['dados'];
 
             $routeName = Route::currentRouteName();
             $nameView  = RouteView::where('route_name', $routeName)->first();
