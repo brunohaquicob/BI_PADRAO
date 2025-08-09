@@ -1202,7 +1202,7 @@ class HighchartsFlexible2 {
                 this.points.forEach(p => {
                     totalGeral += (p.y || 0);
                     const isBase = seriesPerc.includes(p.series.name);
-                    if (isBase) {
+                    if (!isBase) {
                         totalBase += (p.y || 0);
                     }
                     pontos.push({ ...p, isBase });

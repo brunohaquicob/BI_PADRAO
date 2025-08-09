@@ -36,6 +36,7 @@ class CSPMiddleware {
             "'unsafe-inline'",
             "'unsafe-eval'",  // Permitindo eval
             "https://code.highcharts.com",
+            "https://cdn.datatables.net",
             "https://unpkg.com",
             "https://cdnjs.cloudflare.com",
             "https://cdn.jsdelivr.net"
@@ -46,6 +47,7 @@ class CSPMiddleware {
             "'self'",
             "'unsafe-inline'",
             "https://fonts.googleapis.com",
+            "https://cdn.datatables.net",
             "https://code.ionicframework.com",
             "https://code.highcharts.com",
             "https://cdnjs.cloudflare.com"

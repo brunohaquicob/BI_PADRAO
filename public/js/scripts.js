@@ -341,145 +341,143 @@ function gerarSelectPickerDataTable(obj = ".selectpicker", opt = {}) {
     return $select;
 }
 
-function __renderDataTable(data, div_retorno, extraOptions = {}, class_table = 'table display table-bordered table-hover table-striped small sem-quebra') {
+function __renderDataTable(
+    data,
+    div_retorno,
+    extraOptions = {},
+    class_table = 'table display table-bordered table-hover table-striped small sem-quebra',
+    returnPromise = false // <- NOVO: se true, retorna Promise que resolve após render completo
+) {
     const dados = data.dados;
     const columnConfigs = data.colunas_config;
     const filtrosHeader = data.filtrosHeader ?? [];
 
-    // Gere um ID único para a tabela (evite repetir "dataTable")
     const tableId = `dataTable_${Date.now()}`;
-    const ns = `.dtFix-${tableId}`; // namespace pros eventos
+    const ns = `.dtFix-${tableId}`;
 
-    const dataTable = $('<table>', {
-        id: tableId,
-        class: class_table,
-        style: 'width:100%'
+    const $table = $('<table>', { id: tableId, class: class_table, style: 'width:100%' });
+    $('#' + div_retorno).html($table);
+
+    // Cabeçalho/rodapé
+    const $thead = $('<thead>');
+    const $tfoot = $('<tfoot>');
+    const $headerRow = $('<tr>');
+    const $footerRow = $('<tr>');
+    columnConfigs.forEach(cfg => {
+        $headerRow.append('<th>' + (cfg.nome || '') + '</th>');
+        $footerRow.append('<th class="' + (cfg.alinhamento || '') + '"></th>');
     });
+    $thead.append($headerRow);
+    $tfoot.append($footerRow);
+    $table.append($thead).append($tfoot);
 
-    $('#' + div_retorno).html(dataTable);
+    // Promise para o modo assíncrono
+    let resolveReady;
+    const readyPromise = new Promise(r => { resolveReady = r; });
 
-    // Criar o header e o footer da tabela
-    var thead = $('<thead>');
-    var tfoot = $('<tfoot>');
-    var headerRow = $('<tr>');
-    var footerRow = $('<tr>');
-
-    columnConfigs.forEach(function (config) {
-        headerRow.append('<th>' + (config.nome || '') + '</th>');
-        footerRow.append('<th class="' + (config.alinhamento || '') + '"></th>'); // Aplica alinhamento ao footer
-    });
-
-    thead.append(headerRow);
-    tfoot.append(footerRow);
-
-    dataTable.append(thead).append(tfoot);
-
-    // Configurações padrão do DataTable
+    // Opções padrão (otimizadas + Scroller)
     const defaultOptions = {
         data: dados,
-        columns: columnConfigs.map((config, index) => ({
-            data: index,
-            render: function (data, type) {
-                if (type === 'display' || type === 'filter') {
-                    if (data == null || data === "") return "";
+        columns: columnConfigs.map((cfg, idx) => ({
+            data: idx,
+            className: ((cfg.alinhamento || '') + ' no-wrap').trim(),
+            render: function (d, type) {
+                if (d == null || d === '') return '';
+                // só formata no display; ordenação/pesquisa usam o valor bruto
+                if (type !== 'display') return d;
 
-                    if (config.decimalPlaces === 'date') {
-                        return moment(data).isValid() ? moment(data).format('DD/MM/YYYY') : "";
-                    }
-                    if (config.decimalPlaces === 'datetime') {
-                        return moment(data).isValid() ? moment(data).format('DD/MM/YYYY HH:mm:ss') : "";
-                    }
-                    if (config.decimalPlaces !== null && !isNaN(data) && config.decimalPlaces >= 0 && config.decimalPlaces !== "") {
-                        return parseFloat(data).toLocaleString('pt-BR', {
-                            minimumFractionDigits: config.decimalPlaces,
-                            maximumFractionDigits: config.decimalPlaces
-                        });
-                    }
+                if (cfg.decimalPlaces === 'date') return moment(d).isValid() ? moment(d).format('DD/MM/YYYY') : '';
+                if (cfg.decimalPlaces === 'datetime') return moment(d).isValid() ? moment(d).format('DD/MM/YYYY HH:mm:ss') : '';
+                if (typeof cfg.decimalPlaces === 'number' && !isNaN(d)) {
+                    return Number(d).toLocaleString('pt-BR', {
+                        minimumFractionDigits: cfg.decimalPlaces,
+                        maximumFractionDigits: cfg.decimalPlaces
+                    });
                 }
-                return data;
+                return d;
             }
         })),
-        scrollY: "500px",
-        scrollX: true,
         destroy: true,
         responsive: false,
-        order: [[1, 'desc']],
+        autoWidth: false,
+        deferRender: true,
+        processing: true,
+        scrollY: '500px',
+        scrollX: true,
+        scroller: true,  // precisa do JS/CSS do Scroller incluídos
+        paging: true,    // Scroller requer paging habilitado (mesmo sem paginação visível)
+        // ordering: [[1, 'desc']],
         columnDefs: [{ targets: '_all', className: 'no-wrap' }],
-        footerCallback: function (row, data, start, end, display) {
+
+        footerCallback: function () {
             const api = this.api();
-            columnConfigs.forEach(function (config, index) {
-                if (config.somar_footer === true) {
-                    let total = 0;
-                    display.forEach(function (rowIdx) {
-                        const valor = api.cell({ row: rowIdx, column: index }).data();
-                        const numero = parseFloat(valor) || 0;
-                        total += numero;
-                    });
+            columnConfigs.forEach((cfg, idx) => {
+                if (cfg.somar_footer === true) {
+                    const arr = api.column(idx, { page: 'current' }).data().toArray();
+                    const total = arr.reduce((s, v) => s + (parseFloat(v) || 0), 0);
+                    $(api.column(idx).footer()).html(
+                        total.toLocaleString('pt-BR', {
+                            minimumFractionDigits: cfg.decimalPlaces || 0,
+                            maximumFractionDigits: cfg.decimalPlaces || 0
+                        })
+                    );
+                } else if (typeof cfg.somar_footer === 'object') {
+                    const colBase = cfg.somar_footer[1][0];
+                    const colComparar = cfg.somar_footer[1][1];
 
-                    const formattedTotal = total.toLocaleString('pt-BR', {
-                        minimumFractionDigits: config.decimalPlaces || 0,
-                        maximumFractionDigits: config.decimalPlaces || 0
-                    });
-                    $(api.column(index).footer()).html(formattedTotal);
-                } else if (typeof config.somar_footer === 'object') {
-                    const colBase = config.somar_footer[1][0];
-                    const colComparar = config.somar_footer[1][1];
+                    const baseArr = api.column(colBase, { page: 'current' }).data().toArray();
+                    const compArr = api.column(colComparar, { page: 'current' }).data().toArray();
 
-                    let somaBase = 0;
-                    let somaComparar = 0;
+                    const somaBase = baseArr.reduce((s, v) => s + (parseFloat(v) || 0), 0);
+                    const somaComparar = compArr.reduce((s, v) => s + (parseFloat(v) || 0), 0);
+                    const perc = (somaComparar > 0 && somaBase > 0) ? (somaComparar / somaBase * 100) : 0;
 
-                    display.forEach(function (rowIdx) {
-                        const valorBase = api.cell({ row: rowIdx, column: colBase }).data();
-                        const valorComparar = api.cell({ row: rowIdx, column: colComparar }).data();
-                        somaBase += parseFloat(valorBase) || 0;
-                        somaComparar += parseFloat(valorComparar) || 0;
-                    });
-
-                    let perc = (somaComparar > 0 && somaBase > 0) ? somaComparar / somaBase * 100 : 0;
-
-                    const formattedTotal = perc.toLocaleString('pt-BR', {
-                        minimumFractionDigits: config.decimalPlaces || 0,
-                        maximumFractionDigits: config.decimalPlaces || 0
-                    });
-                    $(api.column(index).footer()).html(formattedTotal + (config.somar_footer[0] ?? ""));
+                    $(api.column(idx).footer()).html(
+                        perc.toLocaleString('pt-BR', {
+                            minimumFractionDigits: cfg.decimalPlaces || 0,
+                            maximumFractionDigits: cfg.decimalPlaces || 0
+                        }) + (cfg.somar_footer[0] ?? '')
+                    );
                 }
             });
         },
-        drawCallback: function () {
-            const api = this.api();
-            const rows = dataTable.find('tbody tr');
-            rows.each(function () {
-                $(this).find('td').each(function (index) {
-                    const config = columnConfigs[index];
-                    if (config && config.alinhamento) {
-                        $(this).removeClass().addClass(config.alinhamento);
-                    }
-                });
-            });
-        },
+
+        // sem drawCallback — alinhamento já vai em className
+
         initComplete: function () {
             const api = this.api();
-            if (filtrosHeader.length > 0) {
-                filtrosHeader.forEach(function (idx) {
+
+            const finalize = () => {
+                // ajusta layout e resolve a promise após 2 RAFs (garante paint)
+                api.columns.adjust().draw(false);
+                requestAnimationFrame(() => {
+                    requestAnimationFrame(() => resolveReady && resolveReady(api.table()));
+                });
+            };
+
+            if (!filtrosHeader.length) {
+                finalize();
+                return;
+            }
+
+            // monta filtros após o primeiro paint
+            setTimeout(() => {
+                filtrosHeader.forEach((idx) => {
                     const column = api.column(idx);
-                    const header = $(column.header());
-                    const title = header.text();
-                    header.empty();
+                    const $header = $(column.header());
+                    const title = $header.text();
+                    $header.empty();
 
-                    const container = $('<div class="col-12" style="min-width:180px;"></div>');
-                    const titleDiv = $('<div>').text(title);
-                    const select = $('<select multiple="multiple" class="form-control small"></select>');
+                    const $container = $('<div class="col-12" style="min-width:180px;"></div>');
+                    const $titleDiv = $('<div>').text(title);
+                    const $select = $('<select multiple="multiple" class="form-control small"></select>');
+                    $container.append($titleDiv).append($select);
+                    $header.append($container);
 
-                    container.append(titleDiv).append(select);
-                    header.append(container);
+                    const uniques = [...new Set(column.data().toArray().filter(d => d != null && d !== ''))].sort();
+                    uniques.forEach(d => $select.append('<option value="' + d + '">' + d + '</option>'));
 
-                    column.data().unique().sort().each(function (d) {
-                        if (d != null && d !== '') {
-                            select.append('<option value="' + d + '">' + d + '</option>');
-                        }
-                    });
-
-                    select.multiselect({
+                    $select.multiselect({
                         includeSelectAllOption: true,
                         includeSelectAllOptionMin: 3,
                         selectAllText: "Todos",
@@ -489,60 +487,54 @@ function __renderDataTable(data, div_retorno, extraOptions = {}, class_table = '
                         fontSize: 14
                     });
 
-                    select.on('change' + ns, function () {
+                    $select.on('change' + ns, function () {
                         const vals = $(this).val();
                         if (vals && vals.length) {
-                            const escapedVals = vals.map(v => v.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
-                            column.search(escapedVals.join('|'), true, false).draw();
+                            const escaped = vals.map(v => v.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+                            column.search(escaped.join('|'), true, false).draw(false);
                         } else {
-                            column.search('', true, false).draw();
+                            column.search('', true, false).draw(false);
                         }
                     });
                 });
-            }
+
+                finalize();
+            }, 0);
         }
     };
 
     const options = $.extend(true, {}, defaultOptions, extraOptions);
-    const table = dataTable.DataTable(options);
+    const table = $table.DataTable(options);
 
-    // -------- visibilitychange / resize COM NAMESPACE + CLEANUP --------
+    // Ajustes + cleanup
     const adjust = () => {
-        table.columns.adjust().draw(false);
-        if (table.fixedHeader) {
-            table.fixedHeader.adjust();
-        }
+        table.columns.adjust();
+        if (table.fixedHeader) table.fixedHeader.adjust();
     };
 
-    // jQuery para poder remover fácil (namespaced)
     $(document).off('visibilitychange' + ns).on('visibilitychange' + ns, function () {
-        if (!document.hidden) {
-            adjust();
-        }
+        if (!document.hidden) adjust();
     });
 
     let resizeObserver = null;
-
-    const tableElement = dataTable.get(0);
     if (window.ResizeObserver) {
         resizeObserver = new ResizeObserver(() => adjust());
-        resizeObserver.observe(tableElement);
+        resizeObserver.observe($table.get(0));
     } else {
         $(window).off('resize' + ns).on('resize' + ns, adjust);
     }
 
-    // Quando a tabela for destruída, limpa tudo
     table.on('destroy.dt', function () {
         $(document).off('visibilitychange' + ns);
         $(window).off('resize' + ns);
-        if (resizeObserver) {
-            resizeObserver.disconnect();
-            resizeObserver = null;
-        }
+        if (resizeObserver) { resizeObserver.disconnect(); resizeObserver = null; }
     });
 
-    return table;
+    // Compatível + assíncrono opcional
+    return returnPromise ? readyPromise : table;
 }
+
+
 
 
 function formatarTextoCom_(texto) {
@@ -552,8 +544,16 @@ function formatarTextoCom_(texto) {
         .join(' '); // junta com espaço
 }
 
-function animarNumeroBRL(elemento, valorInicial, valorFinal, duracao = 2000, decimal = 2, prefix = "R$ ", sufix = "") {
-
+function animarNumeroBRL(
+    elemento,
+    valorInicial,
+    valorFinal,
+    duracao = 2000,
+    decimal = 2,
+    prefix = "R$ ",
+    sufix = "",
+    returnPromise = false // <- NOVO, opcional
+) {
     function setValor(el, valorFormatado) {
         var tag = el.prop("tagName").toLowerCase();
         if (tag === "input" || tag === "textarea" || tag === "select") {
@@ -563,9 +563,21 @@ function animarNumeroBRL(elemento, valorInicial, valorFinal, duracao = 2000, dec
         }
     }
 
-    $(elemento).each(function () {
-        var el = $(this);
+    const $els = $(elemento);
+    if (!returnPromise) {
+        // Comportamento antigo (compatível)
+        $els.each(function () { animarUm($(this)); });
+        return; // nada retornado, como antes
+    }
 
+    // Novo: resolve quando TODOS os elementos terminarem
+    const promises = [];
+    $els.each(function () {
+        promises.push(new Promise((resolve) => animarUm($(this), resolve)));
+    });
+    return Promise.all(promises);
+
+    function animarUm(el, done) {
         var vi = valorInicial;
         if (vi === undefined || vi === null || vi === "") vi = 0;
         else if (typeof vi === "string") vi = moneyToDouble(vi);
@@ -584,9 +596,9 @@ function animarNumeroBRL(elemento, valorInicial, valorFinal, duracao = 2000, dec
         } else if (typeof vf === "string") vf = moneyToDouble(vf);
         else if (typeof vf !== "number") vf = 0;
 
-        // Se valorInicial e valorFinal forem iguais, só mostra e retorna
         if (vi === vf) {
             setValor(el, doubleToMoney(vf, decimal));
+            if (done) done();
             return;
         }
 
@@ -602,6 +614,7 @@ function animarNumeroBRL(elemento, valorInicial, valorFinal, duracao = 2000, dec
                 },
                 complete: function () {
                     numberStepBRL(vf, { elem: el[0] });
+                    if (done) done();
                 }
             }
         );
@@ -612,8 +625,9 @@ function animarNumeroBRL(elemento, valorInicial, valorFinal, duracao = 2000, dec
             var inteiroComPonto = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.');
             setValor($(tween.elem), prefix + inteiroComPonto + (decimal > 0 ? ',' + parts[1] : '') + sufix);
         }
-    });
+    }
 }
+
 
 function carregarCoresGraficos() {
     Highcharts.setOptions({
@@ -679,7 +693,7 @@ function carregarCoresGraficos() {
     });
 }
 
-function carregarCoresGraficosHapvida(){
+function carregarCoresGraficosHapvida() {
     Highcharts.setOptions({
         colors: [
             '#3c8dbc',

@@ -415,6 +415,11 @@ return [
                     'location' => 'vendor/datatable/datatables-sorting/datetime-moment.js',
                 ],
                 [
+                    'type' => 'js',
+                    'asset' => false,
+                    'location' => 'https://cdn.datatables.net/scroller/2.4.1/js/dataTables.scroller.min.js',
+                ],
+                [
                     'type' => 'css',
                     'asset' => true,
                     'location' => 'vendor/datatable/datatables-responsive/css/responsive.bootstrap4.min.css',
@@ -438,6 +443,11 @@ return [
                     'type' => 'css',
                     'asset' => true,
                     'location' => 'vendor/datatable/datatables-rowgroup/css/rowGroup.bootstrap4.min.css',
+                ],
+                [
+                    'type' => 'css',
+                    'asset' => false,
+                    'location' => 'https://cdn.datatables.net/scroller/2.4.1/css/scroller.dataTables.min.css',
                 ],
 
             ],

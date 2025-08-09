@@ -65,9 +65,6 @@
                         <a class="nav-link btn-sm ladda-button" data-style="zoom-out" href="#resultado-aba1" data-toggle="tab">Sintético</a>&nbsp;
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link btn-sm ladda-button" data-style="zoom-out" href="#resultado-aba3" data-toggle="tab">#</a>&nbsp;
-                    </li>
-                    <li class="nav-item">
                         <button type="button" class="btn btn-tool ladda-button" data-card-widget="collapse" style="margin-top: 5px;"><i class="fas fa-minus"></i></button>
                     </li>
                     <li class="nav-item">
@@ -112,23 +109,26 @@
                                     <x-cardcustom-component tipo="simples" identificador="{{ $identificadorCard }}" footer='S' color='primary' icon="fas fa-chart-pie" title="DESEMPENHO CARTEIRAS"
                                         style='min-height: 600px; p-0'>
                                         <x-slot name="slotbody">
-                                            <div class="row">
-                                                <div class="col-12" id="card_1"></div>
-                                                {{-- <div class="col-4" id="card_1_1"></div> --}}
+                                            <div class="row margem_cima10">
+                                                <div class="col-6" id="card_1"></div>
+                                                <div class="col-6" id="card_1_1"></div>
                                             </div>
-                                            <div class="row">
-                                                <div class="col-12" id="card_2"></div>
-                                                {{-- <div class="col-12" id="card_2_1"></div> --}}
+                                            <div class="row margem_cima10 border-top border-olive pt-2">
+                                                <div class="col-6" id="card_2"></div>
+                                                <div class="col-6" id="card_2_1"></div>
                                             </div>
-                                            <div class="row">
+                                            <div class="row margem_cima10 border-top border-olive pt-2">
                                                 <div class="col-6" id="card_3"></div>
                                                 <div class="col-6" id="card_3_1"></div>
                                             </div>
-                                            <div class="row">
-                                                <div class="col-6" id="container"></div>
-                                                <div class="col-6" id="container2"></div>
-                                                {{-- <div class="col-4" id="card_3_1"></div> --}}
+                                            <div class="row margem_cima10 border-top border-olive pt-2">
+                                                <div class="col-12" id="card_4"></div>
                                             </div>
+                                            <div class="row">
+                                            </div>
+                                            {{-- <div class="row margem_cima10 border-top border-olive pt-2">
+                                                <div class="col-12" id="tabela"></div>
+                                            </div> --}}
                                         </x-slot>
                                         {{-- <x-slot name="slotfooter">
                                 <p>conteudo footer</p>
@@ -201,20 +201,7 @@
                         } else {
                             if (response.data.tabela !== undefined && response.data.tabela != '') {
 
-                                let param = {
-                                    ordering: false
-                                };
-
-                                const table = __renderDataTable(response.data.tabela, div_retorno_sintetico, param);
-
-                                const dtf = new DTFiltrados(table);
-                                lerRowEMontarGraficos(dtf.getArray());
-                                const stop = dtf.hookFilteredRows((rows, tbl) => {
-                                    lerRowEMontarGraficos(rows);
-                                }, 3000); // espera 3s 
-
-                                // parar de escutar:
-                                // stop();
+                                tratarRetorno(response.data.tabela, div_retorno_sintetico);
                             }
                         }
 
@@ -231,40 +218,60 @@
 
             });
 
-            function lerRowEMontarGraficos(rows) {
+            async function tratarRetorno(tabela, divTabela) {
+                const table = await __renderDataTable(
+                    tabela,
+                    divTabela, {
+                        ordering: true
+                    },
+                    undefined, // class_table padrão
+                    true // returnPromise = true
+                );
+                const dtf = new DTFiltrados(table);
+                lerRowEMontarGraficos(dtf.getArray());
+                const stop = dtf.hookFilteredRows((rows, tbl) => {
+                    lerRowEMontarGraficos(rows);
+                }, 3000); // espera 3s 
+            }
+
+            async function lerRowEMontarGraficos(rows) {
 
                 const ar_valores = {
-                    CON: 6,
-                    VIDA: 7,
-                    VIDAR: 8,
-                    VIDAD: 10,
-                    VIDAA: '7-8-10',
-                    IMP: 11,
-                    IMPA: 12,
-                    IMPR: 13,
+                    CON: 7,
+                    VIDA: 8,
+                    VIDAR: 9,
+                    VIDAD: 11,
+                    //VIDAA: '8-9-11',
+                    IMP: 12,
+                    IMPA: 13,
+                    IMPR: 14,
                 }
 
-                const ar_total = Utilitarios.sumColumnsFormula(rows, ar_valores);
-                const ar_cancelado = Utilitarios.sumColumnsFormula(rows, ar_valores, 1);
-                const ar_operadora = Utilitarios.sumColumnsFormula(rows, ar_valores, 4);
-                const ar_porte     = Utilitarios.sumColumnsFormula(rows, ar_valores, 5);
+                //const ar_total          = Utilitarios.sumColumnsFormula(rows, ar_valores);
+                const ar_total = Utilitarios.sumColumns(rows, ar_valores);
+                const ar_implantacao = Utilitarios.sumColumns(rows, ar_valores, 0);
+                const ar_cancelado = Utilitarios.sumColumns(rows, ar_valores, 1);
+                const ar_frente = Utilitarios.sumColumns(rows, ar_valores, 2);
+                const ar_operadora = Utilitarios.sumColumns(rows, ar_valores, 4);
+                const ar_porte = Utilitarios.sumColumns(rows, ar_valores, 5);
+                const ar_fase = Utilitarios.sumColumns(rows, ar_valores, 6);
 
+                //ATUALIZAR CARDS
+                const time_animacao = 1500;
+                //await animarNumeroBRL('#smallbox1-1', 0, ar_total.IMP, time_animacao, 2, '', '', true);
+                await Promise.all([
+                    animarNumeroBRL('#smallbox1-1', 0, ar_total.IMP, time_animacao, 2, '', '', true),
+                    animarNumeroBRL('#smallbox2-1', 0, ar_total.IMPR, time_animacao, 2, '', '', true),
+                    animarNumeroBRL('#smallbox2-2', 0, (ar_total.IMP > 0 ? (ar_total.IMPR / ar_total.IMP * 100) : 0), time_animacao, 2, 'Valor Recuperado (<b>', '%</b>)', true),
+                    animarNumeroBRL('#smallbox4-1', 0, ar_total.VIDA, time_animacao, 0, '', '', true),
+                    animarNumeroBRL('#smallbox5-1', 0, ar_total.VIDAR, time_animacao, 0, '', '', true),
+                    animarNumeroBRL('#smallbox5-2', 0, (ar_total.VIDA > 0 ? ((ar_total.VIDAR) / ar_total.VIDA * 100) : 0), time_animacao, 2, 'Vidas Recuperadas (<b>', '%</b>)', true),
+                ]);
 
-                animarNumeroBRL('#smallbox1-1', 0, ar_total.IMP, 3000, 2, '');
-                animarNumeroBRL('#smallbox2-1', 0, ar_total.IMPR, 3000, 2, '');
-                animarNumeroBRL('#smallbox2-2', 0, (ar_total.IMP > 0 ? (ar_total.IMPR / ar_total.IMP * 100) : 0), 3000, 2, 'Valor Recuperado (<b>', '%</b>)');
-
-                animarNumeroBRL('#smallbox4-1', 0, ar_total.VIDA, 3000, 0, '');
-                animarNumeroBRL('#smallbox5-1', 0, (ar_total.VIDAR), 3000, 0, '');
-                animarNumeroBRL('#smallbox5-2', 0, (ar_total.VIDA > 0 ? ((ar_total.VIDAR) / ar_total.VIDA * 100) : 0), 3000, 2, 'Vidas Recuperadas (<b>', '%</b>)');
-
-
-                criarGraficoChartsFlexible(ar_cancelado, 'card_1', 'Desempenho Cancelados', 'Vidas', 0);
-                criarGraficoChartsFlexible(ar_operadora, 'card_2', 'Desempenho Operadora', 'Vidas', 0);
-                criarGraficoChartsFlexible(ar_porte, 'card_3', 'Desempenho Porte', 'Vidas', 0);
+                //Renderiza os graficos apos a animação dos cards
                 //FUNIL
                 CriarGraficos.createHighchartsFunnel({
-                    containerId: 'card_3_1',
+                    containerId: 'card_1',
                     title: '',
                     data: [{
                             name: 'Implantado',
@@ -272,7 +279,7 @@
                         },
                         {
                             name: 'Em Aberto',
-                            value: ar_total.VIDAA
+                            value: ar_total.VIDA - ar_total.VIDAD - ar_total.VIDAR
                         },
                         {
                             name: 'Devolvido',
@@ -289,21 +296,31 @@
                     suffix: '',
                     colors: [
                         '#6c757d',
-                        '#dc3545',
                         '#3c8dbc',
+                        '#dc3545',
                         '#3d9970',
                     ], // opcional
                 });
 
+
+                criarGraficoChartsFlexible(ar_implantacao, 'card_1_1', 'Desempenho Implantação', 'Vidas', 0, 'column');
+                criarGraficoChartsFlexible(ar_porte, 'card_2', 'Desempenho Porte', 'Vidas', 0, 'column');
+                criarGraficoChartsFlexible(ar_operadora, 'card_2_1', 'Desempenho Operadora', 'Vidas', 0, 'column');
+                criarGraficoChartsFlexible(ar_frente, 'card_3', 'Desempenho Frente', 'Vidas', 0, 'column');
+                criarGraficoChartsFlexible(ar_cancelado, 'card_3_1', 'Desempenho Cancelados', 'Vidas', 0, 'column');
+                criarGraficoChartsFlexible(ar_fase, 'card_4', 'Desempenho por Fase', 'Vidas', 0, 'column');
+
             }
 
-            function criarGraficoChartsFlexible(ar_dados, id, title, subtitle = 'Implantado/Aberto/Recuperado', decimal = 2) {
+            function criarGraficoChartsFlexible(ar_dados, id, title, subtitle = 'Implantado/Aberto/Recuperado', decimal = 2, tipo_grafico = 'areaspline') {
                 // 1. Pegar as chaves e ordenar (ano-mês)
                 let keys = Object.keys(ar_dados).sort();
+                let key_ajust = keys.map(s => s.includes('->') ? s.split('->')[1].trim() : s);
                 // 2. Criar arrays separados
                 let implantado = keys.map(k => ar_dados[k].VIDA);
-                let aberto = keys.map(k => ar_dados[k].VIDAA);
+                let aberto = keys.map(k => ar_dados[k].VIDA - ar_dados[k].VIDAR - ar_dados[k].VIDAD);
                 let recebido = keys.map(k => ar_dados[k].VIDAR);
+                let devolvido = keys.map(k => ar_dados[k].VIDAD);
 
                 const chart = new HighchartsFlexible2({
                     container: id,
@@ -312,27 +329,27 @@
                     tooltip: {
                         decimals: 0
                     },
-                    seriesPerc: ['Implantadas'],
+                    //seriesPerc: ['Implantadas'],
                     colors: null,
                     xAxis: {
                         type: 'category',
-                        categories: keys
+                        categories: key_ajust
                     },
                     yAxis: {
                         title: '',
                         min: 0
                     },
                     series: [{
-                            name: 'Implantadas',
-                            type: 'column',
-                            data: implantado,
+                            name: 'Em aberto',
+                            type: tipo_grafico,
+                            data: aberto,
                             prefix: '',
                             decimals: decimal
                         },
                         {
-                            name: 'Em aberto',
-                            type: 'column',
-                            data: aberto,
+                            name: 'Devolvido',
+                            type: tipo_grafico,
+                            data: devolvido,
                             prefix: '',
                             decimals: decimal
                         },
@@ -342,7 +359,14 @@
                             data: recebido,
                             prefix: '',
                             decimals: decimal
-                        }
+                        },
+                        /*{
+                             name: 'Implantadas',
+                             type: 'column',
+                             data: implantado,
+                             prefix: '',
+                             decimals: decimal
+                         }*/
                     ]
                 }).build();
             }
