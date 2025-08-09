@@ -135,6 +135,35 @@
     @push('css')
         <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
         <link href="{{ asset('css/relatorios/rel_oportunidades_ws.css') }}" rel="stylesheet">
+        <style>
+            /* evita quebra e ajusta fontes conforme a largura do viewport */
+            .kpi .highcharts-kpi .highcharts-value {
+                white-space: nowrap;
+                /* NÃO quebrar o número */
+                line-height: 1.1;
+                font-weight: 700;
+                font-size: clamp(18px, 4.5vw, 28px);
+                /* escala: 18px..28px */
+            }
+
+            .kpi .highcharts-kpi .highcharts-title {
+                margin-bottom: .25rem;
+                font-size: clamp(14px, 3.2vw, 20px);
+            }
+
+            .kpi .highcharts-kpi .highcharts-subtitle {
+                margin-top: .25rem;
+                font-size: clamp(12px, 2.4vw, 14px);
+                opacity: .85;
+            }
+
+            /* opcional: esconder subtítulo no mobile muito estreito */
+            @media (max-width: 480px) {
+                .kpi .highcharts-kpi .highcharts-subtitle {
+                    display: none;
+                }
+            }
+        </style>
     @endpush
     @push('js')
         <script src="https://code.highcharts.com/highcharts.js"></script>
@@ -206,50 +235,57 @@
                             kpis: [{
                                     renderTo: 'kpi-card1',
                                     title: formatarTextoCom_(colunsNameKap[0]),
-                                    value: formatNumber(dados_grafico.totais[0], 2),
+                                    value: formatNumberAdaptive(dados_grafico.totais[0], 2),
                                     subtitle: 'Valor implantado',
                                     valueFormat: '{value}'
                                 },
                                 {
                                     renderTo: 'kpi-card2',
                                     title: formatarTextoCom_(colunsNameKap[1]),
-                                    value: formatNumber(dados_grafico.totais[1], 2),
+                                    value: formatNumberAdaptive(dados_grafico.totais[1], 2),
                                     subtitle: 'Valor em Aberto',
                                     valueFormat: '{value}'
                                 },
                                 {
                                     renderTo: 'kpi-card3',
                                     title: formatarTextoCom_(colunsNameKap[2]),
-                                    value: formatNumber(dados_grafico.totais[2], 2),
+                                    value: formatNumberAdaptive(dados_grafico.totais[2], 2),
                                     subtitle: 'Valor Baixado',
                                     valueFormat: '{value}'
                                 },
                                 {
                                     renderTo: 'kpi-card4',
                                     title: formatarTextoCom_(colunsNameKap[3]),
-                                    value: formatNumber(dados_grafico.totais[3], 2),
+                                    value: formatNumberAdaptive(dados_grafico.totais[3], 2),
                                     subtitle: 'Valor Recebido',
                                     valueFormat: '{value}'
                                 },
                                 {
                                     renderTo: 'kpi-card5',
                                     title: formatarTextoCom_(colunsNameKap[4]),
-                                    value: formatNumber(dados_grafico.totais[4], 2),
+                                    value: formatNumberAdaptive(dados_grafico.totais[4], 2),
                                     subtitle: 'Valor Comissao',
                                     valueFormat: '{value}'
                                 },
                                 {
                                     renderTo: 'kpi-card6',
                                     title: formatarTextoCom_(colunsNameKap[5]),
-                                    value: formatNumber(dados_grafico.totais[5], 2),
+                                    value: formatNumberAdaptive(dados_grafico.totais[5], 2),
                                     subtitle: 'Valor Devolvido',
                                     valueFormat: '{value}'
                                 },
                                 {
                                     renderTo: 'kpi-card7',
                                     title: formatarTextoCom_(colunsNameKap[6]),
-                                    value: formatNumber(dados_grafico.totais[6], 0),
+                                    value: formatNumberAdaptive(dados_grafico.totais[6], 0),
                                     subtitle: 'CPFs Unicos',
+                                    valueFormat: '{value}'
+                                },
+                                {
+                                    renderTo: 'kpi-card8',
+                                    title: formatarTextoCom_(colunsNameKap[7]),
+                                    value: formatNumberAdaptive(dados_grafico.totais[7], 0),
+                                    subtitle: 'Contratos Unicos',
                                     valueFormat: '{value}'
                                 }
                             ],
@@ -503,12 +539,12 @@
                 }, true);
             }
 
-            function formatNumber(value, decimals = 2) {
-                return new Intl.NumberFormat('pt-BR', {
-                    minimumFractionDigits: decimals,
-                    maximumFractionDigits: decimals
-                }).format(value);
-            }
+            //function formatNumber(value, decimals = 2) {
+               // return new Intl.NumberFormat('pt-BR', {
+                   // minimumFractionDigits: decimals,
+                    //maximumFractionDigits: decimals
+               // }).format(value);
+            //}
 
             function createDashboardStructure(containerId, totalColunas) {
                 const container = document.getElementById(containerId);
@@ -516,39 +552,60 @@
                     console.error(`Container with ID "${containerId}" not found.`);
                     return;
                 }
-
-                // Limpa o container antes de adicionar os elementos
                 container.innerHTML = '';
 
-                // Define a estrutura de IDs para os elementos
-                const chartRow =
-                    totalColunas > 12 ? [
-                        ['dashboard-col-0'],
-                        ['dashboard-col-1'],
-                        ['dashboard-col-2']
-                    ] : [
-                        ['dashboard-col-0', 'dashboard-col-1', 'dashboard-col-2']
-                    ];
-                const structure = [
-                    ['kpi-card1', 'kpi-card2', 'kpi-card3', 'kpi-card4', 'kpi-card5', 'kpi-card6', 'kpi-card7'],
-                    ...chartRow,
-                    ['dashboard-col-3']
-                ];
+                // IDs
+                const kpiIds = ['kpi-card1', 'kpi-card2', 'kpi-card3', 'kpi-card4', 'kpi-card5', 'kpi-card6', 'kpi-card7', 'kpi-card8'];
+                const chartIds = ['dashboard-col-0', 'dashboard-col-1', 'dashboard-col-2'];
+                const gridId = 'dashboard-col-3';
 
-                // Cria a estrutura
-                structure.forEach(rowIds => {
-                    const row = document.createElement('div');
-                    row.className = 'row';
-
-                    rowIds.forEach(cellId => {
-                        const cell = document.createElement('div');
-                        cell.className = 'cell';
-                        cell.id = cellId;
-                        row.appendChild(cell);
-                    });
-
-                    container.appendChild(row);
+                // ---- KPIs: responsivo com Bootstrap ----
+                const kpiRow = document.createElement('div');
+                kpiRow.className = 'row';
+                kpiIds.forEach(id => {
+                    const col = document.createElement('div');
+                    // 2 por linha no xs, 3 no md, 4 no lg, 6 no xl
+                    col.className = 'col-4 col-md-3 col-lg-3';
+                    col.id = id;
+                    kpiRow.appendChild(col);
                 });
+                container.appendChild(kpiRow);
+
+                // ---- Charts: 3 colunas lado a lado no lg+ (1 por linha no mobile) ----
+                const chartsRow = document.createElement('div');
+                chartsRow.className = 'row';
+                chartIds.forEach(id => {
+                    const col = document.createElement('div');
+                    col.className = 'col-12 col-lg-6';
+                    col.id = id;
+                    chartsRow.appendChild(col);
+                });
+                container.appendChild(chartsRow);
+
+                // ---- DataGrid / tabela: ocupa largura toda ----
+                const gridRow = document.createElement('div');
+                gridRow.className = 'row';
+                const gridCol = document.createElement('div');
+                gridCol.className = 'col-12';
+                gridCol.id = gridId;
+                gridRow.appendChild(gridCol);
+                container.appendChild(gridRow);
+            }
+
+            function formatNumberAdaptive(value, decimals = 2) {
+                const isNarrow = window.innerWidth < 576; // xs
+                if (isNarrow) {
+                    return new Intl.NumberFormat('pt-BR', {
+                        notation: 'compact',
+                        compactDisplay: 'short',
+                        minimumFractionDigits: 0,
+                        maximumFractionDigits: 1
+                    }).format(value);
+                }
+                return new Intl.NumberFormat('pt-BR', {
+                    minimumFractionDigits: decimals,
+                    maximumFractionDigits: decimals
+                }).format(value);
             }
         </script>
     @endpush

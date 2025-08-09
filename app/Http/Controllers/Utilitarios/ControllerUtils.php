@@ -153,7 +153,7 @@ class ControllerUtils extends Controller {
         ];
     }
 
-    public static function fases_padrao_senff_name($valor) {
+    public static function fases_padrao_name($valor) {
         foreach (self::fases_padrao() as $fase) {
             if (self::isBetween($valor, $fase['ini'], $fase['fim'])) {
                 return $fase['name'];
@@ -161,8 +161,27 @@ class ControllerUtils extends Controller {
         }
         return "Não Localizada.";
     }
-    public static function fases_padrao_name($valor) {
-        foreach (self::fases_padrao() as $fase) {
+
+    public static function fases_padrao_senff() {
+        return [
+            ["name" => "-0", "ini" => -9999, "fim" => -1], //0
+            ["name" => "0 - 15", "ini" => 0, "fim" => 15], //0
+            ["name" => "16 - 30", "ini" => 16, "fim" => 30], //1
+            ["name" => "31 - 44", "ini" => 31, "fim" => 44], //2
+            ["name" => "45 - 60", "ini" => 45, "fim" => 60], //3
+            ["name" => "61 - 90", "ini" => 61, "fim" => 90], //4
+            ["name" => "91 - 180", "ini" => 91, "fim" => 180], //5
+            ["name" => "181 - 365", "ini" => 181, "fim" => 365], //6
+            ["name" => "366 - 730", "ini" => 366, "fim" => 730], //7
+            ["name" => "731 - 1095", "ini" => 731, "fim" => 1095], //8
+            ["name" => "1096 - 1460", "ini" => 1096, "fim" => 1460], //9
+            ["name" => "1461 - 1825", "ini" => 1461, "fim" => 1825], //10
+            ["name" => "1826 - 99999", "ini" => 1826, "fim" => 9999], //11
+        ];
+    }
+
+    public static function fases_padrao_senff_name($valor) {
+        foreach (self::fases_padrao_senff() as $fase) {
             if (self::isBetween($valor, $fase['ini'], $fase['fim'])) {
                 return $fase['name'];
             }

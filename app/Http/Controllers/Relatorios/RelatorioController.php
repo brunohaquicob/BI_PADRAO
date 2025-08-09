@@ -108,6 +108,7 @@ class RelatorioController extends Controller {
             "comissao"     => 0,
             "devolvido"    => 0,
             "cpfs"         => 0,
+            "contratos"    => 0,
         ];
 
         $array_dados = [];
@@ -134,6 +135,9 @@ class RelatorioController extends Controller {
             $totais['devolvido'] += $value['valor_devolvido'];
 
             $totais['cpfs'] += $value['qtd_cpf'];
+
+            $totais['contratos'] += $value['qtd_contratos'];
+
         }
 
         $media = [
