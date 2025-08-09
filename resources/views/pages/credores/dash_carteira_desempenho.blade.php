@@ -355,7 +355,7 @@
                 criarGraficosRowKey(ar_data_valor, 'card_2', 'Desempenho por Data', 'Aberto/Em Negociação/Recebidos');
 
 
-                criarGraficoChartsFlexible(contratos_data, 'card_3', 'Desempenho Contratos', 'Por Fase', 0);
+                criarGraficoChartsFlexible(contratos_data, 'card_3', 'Desempenho Contratos Por Implantação', '(Contratos que contém parcelas Recebidas vs parcelas em Aberto)', 0);
                 //FUNIL
                 CriarGraficos.createHighchartsFunnel({
                     containerId: 'card_3_1',
