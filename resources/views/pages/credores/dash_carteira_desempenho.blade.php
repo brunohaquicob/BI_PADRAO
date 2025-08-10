@@ -129,6 +129,8 @@
                     <div class="card-body" style="display: block;">
 
                         <div class="container-fluid">
+                            <div class="row g-2" id="filtrosGraficos">
+                            </div>
                             <div class="row">
                                 <div class="col-3">
                                     <x-boxdynamic-component component-name="smallbox" identificador="1" color="lightblue" icon="ion ion-social-usd" text1="0" text2="Valor Implantado." />
@@ -259,20 +261,7 @@
                         } else {
                             if (response.data.tabela !== undefined && response.data.tabela != '') {
 
-                                let param = {
-                                    ordering: false
-                                };
-
-                                const table = __renderDataTable(response.data.tabela, div_retorno_sintetico, param);
-
-                                const dtf = new DTFiltrados(table);
-                                lerRowEMontarGraficos(dtf.getArray());
-                                const stop = dtf.hookFilteredRows((rows, tbl) => {
-                                    lerRowEMontarGraficos(rows);
-                                }, 3000); // espera 3s 
-
-                                // parar de escutar:
-                                // stop();
+                                tratarRetorno(response.data.tabela, div_retorno_sintetico);
                             }
                         }
 
@@ -288,7 +277,42 @@
 
             });
 
-            function lerRowEMontarGraficos(rows) {
+            async function tratarRetorno(tabela, divTabela) {
+
+                const table = await __renderDataTable(tabela, divTabela, {
+                    ordering: true,
+                    externalFilters: {
+                        container: '#filtrosGraficos',
+                        columns: tabela.filtrosHeader ?? [], // ou [0,3,5] etc.
+                        globalSearch: '#buscaGlobal', // opcional
+                        colClass: 'col-12 col-sm-6 col-md-3',
+                        // keepHeader: true // manter também os selects no header
+                    }
+                }, undefined, true);
+
+                const dtf = new DTFiltrados(table);
+                lerRowEMontarGraficos(dtf.getArray());
+                const stop = dtf.hookFilteredRows((rows, tbl) => {
+                    if (rows.length === 0) return;
+                    lerRowEMontarGraficos(rows);
+                }, {
+                    delay: 300,
+                    alertOnEmpty: true,
+                    alertConfig: {
+                        type: "warning",
+                        title: "Precisamos de sua atenção",
+                        text: "Sem resultados para essa ultima seleção! Desmarque e tente novamente. Ou olhe na aba Sintético os valores disponiveis!",
+                        timeout: 10000
+                    }
+                });
+            }
+
+            async function lerRowEMontarGraficos(rows) {
+
+                if (rows.length === 0) {
+                    SweetAlert.alertAutoClose("info", "Precisamos de sua atenção", "Sem dados para gerar Graficos!", 5000)
+                    return true;
+                }
                 const ar_data_valor = Utilitarios.sumColumns(rows, {
                     I: 9,
                     R: 11,

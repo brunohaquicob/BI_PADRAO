@@ -174,7 +174,6 @@
 
 @once
     @push('css')
-        <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
         <link href="{{ asset('css/dashboard/dash_acordos.css') }}" rel="stylesheet">
     @endpush
     @push('js')
@@ -185,11 +184,6 @@
         <script src="https://code.highcharts.com/modules/accessibility.js"></script>
         <script>
             $(document).ready(function() {
-                /*$('.select2').select2({
-                    placeholder: 'Selecione uma ou mais opções',
-                    allowClear: true, // Adiciona um botão de limpar seleção
-                    width: '100%', // Define a largura do seletor
-                });*/
                 gerarSelectPicker(".selectPickerNovo");
 
                 $('#btnBuscarDados').click(function() {

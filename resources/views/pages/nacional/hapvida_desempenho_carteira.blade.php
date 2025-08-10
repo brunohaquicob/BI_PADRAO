@@ -80,6 +80,8 @@
                     <div class="card-body" style="display: block;">
 
                         <div class="container-fluid">
+                            <div class="row g-2" id="filtrosGraficos">
+                            </div>
                             <div class="row">
                                 <div class="col-3">
                                     <x-boxdynamic-component component-name="smallbox" identificador="1" color="lightblue" icon="ion ion-social-usd" text1="0" text2="Valor Implantado." />
@@ -109,6 +111,7 @@
                                     <x-cardcustom-component tipo="simples" identificador="{{ $identificadorCard }}" footer='S' color='primary' icon="fas fa-chart-pie" title="DESEMPENHO CARTEIRAS"
                                         style='min-height: 600px; p-0'>
                                         <x-slot name="slotbody">
+
                                             <div class="row margem_cima10">
                                                 <div class="col-6" id="card_1"></div>
                                                 <div class="col-6" id="card_1_1"></div>
@@ -219,23 +222,42 @@
             });
 
             async function tratarRetorno(tabela, divTabela) {
-                const table = await __renderDataTable(
-                    tabela,
-                    divTabela, {
-                        ordering: true
-                    },
-                    undefined, // class_table padrão
-                    true // returnPromise = true
-                );
+
+                const table = await __renderDataTable(tabela, divTabela, {
+                    ordering: true,
+                    order: [[8, 'desc']],
+                    externalFilters: {
+                        container: '#filtrosGraficos',
+                        columns: tabela.filtrosHeader ?? [], // ou [0,3,5] etc.
+                        globalSearch: '#buscaGlobal', // opcional
+                        colClass: 'col-12 col-sm-6 col-md-3',
+                        // keepHeader: true // manter também os selects no header
+                    }
+                }, undefined, true);
+
                 const dtf = new DTFiltrados(table);
                 lerRowEMontarGraficos(dtf.getArray());
                 const stop = dtf.hookFilteredRows((rows, tbl) => {
+                    if (rows.length === 0) return;
                     lerRowEMontarGraficos(rows);
-                }, 3000); // espera 3s 
+                }, {
+                    delay: 300,
+                    alertOnEmpty: true,
+                    alertConfig: {
+                        type: "warning",
+                        title: "Precisamos de sua atenção",
+                        text: "Sem resultados para essa ultima seleção! Desmarque e tente novamente. Ou olhe na aba Sintético os valores disponiveis!",
+                        timeout: 10000
+                    }
+                });
             }
 
             async function lerRowEMontarGraficos(rows) {
 
+                if (rows.length === 0) {
+                    SweetAlert.alertAutoClose("info", "Precisamos de sua atenção", "Sem dados para gerar Graficos!", 5000)
+                    return true;
+                }
                 const ar_valores = {
                     CON: 7,
                     VIDA: 8,
