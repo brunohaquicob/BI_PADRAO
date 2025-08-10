@@ -14,7 +14,7 @@
         <div class="small-box bg-{{ $color }}">
             <div class="inner">
                 <h3><span id="{{ $componentName }}{{ $identificador }}-1">{{ $text1 }}</span></h3>
-                <p><span class="font_size_12" id="{{ $componentName }}{{ $identificador }}-2">{{ $text2 }}</span></p>
+                <p><span class="" id="{{ $componentName }}{{ $identificador }}-2">{{ $text2 }}</span></p>
             </div>
             <div class="icon">
                 <i class="{{ $icon }}"></i>

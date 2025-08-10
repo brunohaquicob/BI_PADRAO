@@ -1247,3 +1247,400 @@ class HighchartsFlexible2 {
 
 }
 
+class DashMicro {
+    /**
+     * @param {Object} opts
+     * @param {string} opts.containerId
+     * @param {{ columnNames:string[], data:any[][] }} opts.data
+     * @param {Array} [opts.kpis]
+     * @param {Array} [opts.charts]
+     * @param {boolean} [opts.includeGrid=false]
+     * @param {number} [opts.decimals=2]
+     * @param {number} [opts.pctDecimals=3]
+     * @param {Array<string>} [opts.palette] // opcional, senão usa Highcharts.getOptions().colors
+     */
+    constructor(opts = {}) {
+        const {
+            containerId,
+            data,
+            kpis = [],
+            charts = [],
+            includeGrid = false,
+            decimals = 2,
+            pctDecimals = 3,
+            palette = null
+        } = opts;
+
+        this.containerId = containerId;
+        this.data = data;
+        this.kpis = kpis;
+        this.charts = charts;
+        this.includeGrid = includeGrid;
+        this.decimals = decimals;
+        this.pctDecimals = pctDecimals;
+        this.palette = palette;
+
+        // validação básica
+        if (!this.containerId || !this.data || !this.data.data || !this.data.columnNames) {
+            throw new Error('Parâmetros obrigatórios ausentes: containerId, data.columnNames e data.data.');
+        }
+
+        // id fixo do conector para o board
+        this.connectorId = 'micro-element';
+    }
+
+    render() {
+        this.#createStructure();
+        this.#applyPaletteToScope();
+        this.#setGlobalOptions();
+        const { kpiTargets, chartTargets } = this.#computeTargets();
+        this.#applyContainerColors(kpiTargets, chartTargets);
+        this.#mountBoard(kpiTargets, chartTargets);
+    }
+
+    // ---------- PRIVATES ----------
+
+    #setGlobalOptions() {
+        Highcharts.setOptions({
+            chart: { styledMode: true },
+            lang: { decimalPoint: ',', thousandsSep: '.' }
+        });
+    }
+
+    #computeTargets() {
+        const kpiTargets = this.kpis.map((k, i) => ({
+            ...k,
+            renderTo: k.renderTo || `kpi-${i + 1}`,
+            colorIndex: (k.colorIndex ?? i)
+        }));
+
+        const chartTargets = this.charts.map((c, i) => ({
+            ...c,
+            renderTo: c.renderTo || `chart-${i + 1}`,
+            colorIndex: (c.colorIndex ?? i),
+            type: c.type || 'column',
+            maxLabelLen: c.maxLabelLen || 12
+        }));
+
+        return { kpiTargets, chartTargets };
+    }
+
+    #applyContainerColors(kpiTargets, chartTargets) {
+        kpiTargets.forEach(k => {
+            const el = document.getElementById(k.renderTo);
+            if (el) el.style.setProperty('--kpi-color', `var(--highcharts-color-${k.colorIndex})`);
+        });
+        chartTargets.forEach(c => {
+            const el = document.getElementById(c.renderTo);
+            if (el) el.style.setProperty('--highcharts-color-0', `var(--highcharts-color-${c.colorIndex})`);
+        });
+    }
+
+    #applyPaletteToScope() {
+        const colors = this.palette ?? (Highcharts.getOptions().colors || []);
+        const scope = document.querySelector(`#${this.containerId} .hcdb`);
+        if (!scope) return;
+        colors.forEach((c, i) => scope.style.setProperty(`--highcharts-color-${i}`, c));
+    }
+
+    #createStructure() {
+        const container = document.getElementById(this.containerId);
+        if (!container) throw new Error(`Container "${this.containerId}" não encontrado.`);
+        container.innerHTML = '';
+
+        const wrap = document.createElement('div');
+        wrap.className = 'hcdb container-fluid';
+
+        // KPIs
+        if (this.kpis.length > 0) {
+            const kpiRow = document.createElement('div');
+            kpiRow.className = 'row kpi-row';
+            for (let i = 1; i <= this.kpis.length; i++) {
+                const col = document.createElement('div');
+                col.className = 'col-6 col-md-4 col-lg-3 mb-3 px-2';
+                const cell = document.createElement('div');
+                cell.className = 'hc-cell';
+                cell.id = `kpi-${i}`;
+                col.appendChild(cell);
+                kpiRow.appendChild(col);
+            }
+            wrap.appendChild(kpiRow);
+        }
+
+        // Charts
+        if (this.charts.length > 0) {
+            const chartRow = document.createElement('div');
+            chartRow.className = 'row chart-row';
+            for (let i = 1; i <= this.charts.length; i++) {
+                const col = document.createElement('div');
+                col.className = 'col-12 col-lg-6 col-xl-4 mb-3 px-2';
+                const cell = document.createElement('div');
+                cell.className = 'hc-cell chart-cell';
+                cell.id = `chart-${i}`;
+                col.appendChild(cell);
+                chartRow.appendChild(col);
+            }
+            wrap.appendChild(chartRow);
+        }
+
+        // Grid opcional
+        if (this.includeGrid) {
+            const gridRow = document.createElement('div');
+            gridRow.className = 'row';
+            const col = document.createElement('div');
+            col.className = 'col-12';
+            const cell = document.createElement('div');
+            cell.className = 'hc-cell';
+            cell.id = 'grid-1';
+            col.appendChild(cell);
+            gridRow.appendChild(col);
+            wrap.appendChild(gridRow);
+        }
+
+        container.appendChild(wrap);
+    }
+
+    #mountBoard(kpiTargets, chartTargets) {
+        this.board = Dashboards.board(this.containerId, {
+            dataPool: {
+                connectors: [{
+                    id: this.connectorId,
+                    type: 'JSON',
+                    options: {
+                        firstRowAsNames: false,
+                        columnNames: this.data.columnNames,
+                        data: this.data.data
+                    }
+                }]
+            },
+            editMode: { enabled: false, contextMenu: { enabled: false } },
+            components: [
+                // KPIs
+                ...kpiTargets.map(k => ({
+                    type: 'KPI',
+                    renderTo: k.renderTo,
+                    value: k.value ?? 0,
+                    valueFormat: k.valueFormat || '{value}',
+                    title: k.title || '',
+                    subtitle: k.subtitle || ''
+                })),
+
+                // Charts
+                ...chartTargets.map((chart, idx) => ({
+                    renderTo: chart.renderTo,
+                    sync: { visibility: true, highlight: true, extremes: true },
+                    connector: {
+                        id: this.connectorId,
+                        columnAssignment: [{
+                            seriesId: chart.seriesNameTitle || `Série ${idx + 1}`,
+                            data: [this.data.columnNames[0], this.data.columnNames[idx + 1]]
+                        }]
+                    },
+                    type: 'Highcharts',
+                    chartOptions: this.#chartOptionsFactory(chart, idx)
+                })),
+
+                // DataGrid
+                ...(this.includeGrid ? [{
+                    renderTo: 'grid-1',
+                    connector: { id: this.connectorId },
+                    type: 'DataGrid',
+                    sync: { highlight: true, visibility: true },
+                    dataGridOptions: { credits: { enabled: false } }
+                }] : [])
+            ]
+        }, true);
+
+        this.#waitForKpiDom(kpiTargets).then(() => this.#animateKpis(kpiTargets));
+
+
+    }
+    #findKpiValueEl(renderToId) {
+        return document.querySelector(
+            `#${renderToId} .highcharts-dashboards-component-kpi-value`
+        );
+    }
+
+    #waitForKpiDom(kpiTargets, timeoutMs = 1500) {
+        const t0 = performance.now();
+        return new Promise((resolve) => {
+            const tick = () => {
+                const ready = kpiTargets.every(k => this.#findKpiValueEl(k.renderTo));
+                if (ready || performance.now() - t0 > timeoutMs) return resolve();
+                requestAnimationFrame(tick);
+            };
+            tick();
+        });
+    }
+
+
+    #animateKpis(kpiTargets) {
+        kpiTargets.forEach(k => {
+            const raw = Number(k.value ?? 0);
+            const dec = (typeof k.decimals === 'number') ? k.decimals : this.decimals;
+            const prefix = (k.prefix ?? '');
+            const suffix = (k.suffix ?? '');
+
+            // 3.1 tente via API do componente
+            const comp = this.#getKpiComponentByRenderTo(k.renderTo);
+            if (comp && typeof comp.setValue === 'function') {
+                this.#animateByComponent(
+                    comp,
+                    0,
+                    raw,
+                    1000,
+                    (v) => `${prefix}${this.#fmt(v, dec)}${suffix}`
+                );
+                return;
+            }
+
+            // 3.2 fallback: anima por DOM
+            const el = this.#findKpiValueEl(k.renderTo);
+            if (!el) return;
+            this.#animarNumero(el, 0, raw, 1000, dec, prefix, suffix);
+        });
+    }
+
+    #getKpiComponentByRenderTo(renderToId) {
+        if (!this.board || !Array.isArray(this.board.mountedComponents)) return null;
+        return this.board.mountedComponents.find(c =>
+            c.type === 'KPI' && c.options && c.options.renderTo === renderToId
+        ) || null;
+    }
+
+    #animateByComponent(comp, start, end, duration, formatFn) {
+        const t0 = performance.now();
+        const step = (now) => {
+            const p = Math.min((now - t0) / duration, 1);
+            const val = start + (end - start) * p;
+            const txt = formatFn(val);
+            // alguns KPIs aceitam string em setValue; se não, passe número e ajuste valueFormat
+            comp.setValue(txt);
+            if (p < 1) requestAnimationFrame(step);
+        };
+        requestAnimationFrame(step);
+    }
+
+    #fmt(v, decimals) {
+        return new Intl.NumberFormat('pt-BR', {
+            minimumFractionDigits: decimals,
+            maximumFractionDigits: decimals,
+            useGrouping: true
+        }).format(v);
+    }
+
+    // fallback DOM (igual ao anterior, só usando o #fmt)
+    #animarNumero(el, start, end, duration = 1000, decimals = 0, prefix = '', suffix = '') {
+        const t0 = performance.now();
+        const step = (now) => {
+            const p = Math.min((now - t0) / duration, 1);
+            const val = start + (end - start) * p;
+            el.textContent = `${prefix}${this.#fmt(val, decimals)}${suffix}`;
+            if (p < 1) requestAnimationFrame(step);
+        };
+        requestAnimationFrame(step);
+    }
+
+    #chartOptionsFactory(chart, idx) {
+        const self = this;
+        return {
+            chart: {
+                animation: false,
+                type: chart.type,
+                spacing: [20, 20, 20, 20]
+            },
+            credits: { enabled: false },
+            xAxis: {
+                type: 'category',
+                labels: {
+                    rotation: -45,
+                    formatter: function () {
+                        const s = String(this.value || '');
+                        const max = chart.maxLabelLen;
+                        return s.length > max ? s.substring(0, max) + '…' : s;
+                    }
+                }
+            },
+            yAxis: {
+                title: { text: chart.yAxisTitle || '' },
+                max: chart.max ?? null,
+                plotLines: [{
+                    value: chart.plotLineValue || 0,
+                    zIndex: 7,
+                    dashStyle: 'shortDash',
+                    label: {
+                        text: chart.plotLineText || '',
+                        align: 'right',
+                        style: { color: '#B73C28' }
+                    }
+                }]
+            },
+            legend: {
+                enabled: true,
+                verticalAlign: 'top',
+                labelFormatter: function () {
+                    return chart.seriesNameTitle || this.name || 'Série';
+                }
+            },
+            plotOptions: {
+                series: {
+                    marker: { radius: 5 },
+                    dataLabels: {
+                        enabled: true,
+                        formatter: function () {
+                            return Highcharts.numberFormat(
+                                this.y,
+                                chart.decimals ?? 0,
+                                Highcharts.getOptions().lang.decimalPoint,
+                                Highcharts.getOptions().lang.thousandsSep
+                            );
+                        }
+                    }
+                }
+            },
+            tooltip: {
+                useHTML: true,
+                stickOnContact: true,
+                formatter: function () {
+                    const pts = this.series.points || [];
+                    const total = pts.reduce((s, p) => s + (p.y || 0), 0);
+                    const pct = total ? (this.y / total) * 100 : 0;
+                    const valueDec = chart.valueDecimals ?? self.decimals;
+                    const percentDec = chart.percentDecimals ?? self.pctDecimals;
+
+                    const valFmt = Highcharts.numberFormat(
+                        this.y, valueDec,
+                        Highcharts.getOptions().lang.decimalPoint,
+                        Highcharts.getOptions().lang.thousandsSep
+                    );
+                    const pctFmt = Highcharts.numberFormat(
+                        pct, percentDec,
+                        Highcharts.getOptions().lang.decimalPoint,
+                        Highcharts.getOptions().lang.thousandsSep
+                    );
+
+                    const seriesName = chart.seriesNameTitle || this.series.name;
+                    return `<b>${this.key}</b><br/>${seriesName}: <b>${valFmt}</b><br/>${pctFmt}% do total`;
+                }
+            },
+            title: { text: chart.seriesName || '' }
+        };
+    }
+
+    // util pública (se quiser reaproveitar)
+    static formatNumberAdaptive(value, decimals = 2) {
+        const isNarrow = window.innerWidth < 576;
+        if (isNarrow) {
+            return new Intl.NumberFormat('pt-BR', {
+                notation: 'compact',
+                compactDisplay: 'short',
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 1
+            }).format(value);
+        }
+        return new Intl.NumberFormat('pt-BR', {
+            minimumFractionDigits: decimals,
+            maximumFractionDigits: decimals
+        }).format(value);
+    }
+}

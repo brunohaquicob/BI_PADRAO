@@ -30,7 +30,7 @@ class RelatorioController extends Controller {
         try {
             $dados = [];
 
-            $ar_fields['rel_carteira']          = 'nullable|array';
+            $ar_fields['rel_equipe_loja']       = 'required|array';
             $ar_fields['rangedatas']            = 'required|array';
             $ar_fields['rangedatas.*']          = 'date_format:Y-m-d';
             $ar_fields['limitar_data']          = 'nullable|string';
@@ -48,19 +48,18 @@ class RelatorioController extends Controller {
                 "limitar_data"          => $dadosTratados['limitar_data'],
                 "rel_tipo_data"         => $dadosTratados['rel_tipo_data'],
                 "rel_tipo_agrupamento"  => $dadosTratados['rel_tipo_agrupamento'],
-                "rel_carteira"          => !empty($dadosTratados['rel_carteira']) ? $dadosTratados['rel_carteira'] : []
+                "rel_equipe_loja"       => !empty($dadosTratados['rel_equipe_loja']) ? $dadosTratados['rel_equipe_loja'] : [],
             ];
 
             $dados = ControllerUtils::excutarChamadaApiAqc('rel_analise_carteiras2', "aqc_bi_padrao", $post, $this->tempo_execucao, true);
 
-            if (!isset($dados['retorno']) || $dados['retorno'] === false || empty($dados['dados'])) {
-                throw new Exception("Erro ao buscar dados API AQC: " . $dados['mensagem'], 1);
+            if (!isset($dados['retorno']) || $dados['retorno'] === false || empty($dados['dados']['valores'])) {
+                return ControllerUtils::jsonResponse(false, [], $dados['mensagem'] ?? "Erro ao buscar dados na API");
             }
-            if (empty($dados['dados']['valores'])) {
-                return ControllerUtils::jsonResponse(false, [], "Dados não localizados com os parametros informados");
-            }
+
+            $retorno = $dados['dados']['valores'];
             //Dash
-            $dashResumo = $this->montarResumoDash($dados['dados']['valores'], $dadosTratados['rel_tipo_agrupamento']);
+            $dashResumo = $this->montarResumoDash($retorno);
             //Retorno
             if (!empty($dados['dados']['link'])) {
                 $htmlDownload = ControllerUtils::retornaHtml($dados['dados']['link'], $dados['dados']['linhas']);
@@ -98,7 +97,7 @@ class RelatorioController extends Controller {
     }
 
     //Dash
-    private function montarResumoDash($dados, $tipo = 'E') {
+    private function montarResumoDash($dados) {
 
         $totais = [
             "carteira"     => 0,
@@ -112,7 +111,7 @@ class RelatorioController extends Controller {
         ];
 
         $array_dados = [];
-        $agrupador = $tipo == 'E' ? 'grupo' : 'subgrupo';
+        $agrupador = 'grupo';
         foreach ($dados as $key => $value) {
 
             if (empty($array_dados[$value[$agrupador]])) {

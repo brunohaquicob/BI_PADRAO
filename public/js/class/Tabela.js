@@ -1,415 +1,3 @@
-class criarDataTableNew {
-    constructor(divId, data, columnNames, columnClasses, sumFooterColumns, extraOptions = {}, tabId = "") {
-        this.tabelaCriada;
-        this.tabId = tabId;
-        this.divId = divId;
-        this.data = data;
-        this.columnNames = columnNames;
-        this.columnClasses = columnClasses;
-        this.sumFooterColumns = sumFooterColumns;
-        this.extraOptions = extraOptions;  // Opções extras para o DataTable
-    }
-
-    // Função para limpar a formatação de valores em dinheiro (retirando "R$", milhar e vírgula)
-    cleanMoney(value) {
-        return parseFloat(value.replace(/[^\d,-]/g, '').replace('.', '').replace(',', '.')) || 0;
-    }
-
-    formatMoney(value) {
-        if (isNaN(value)) return value; // Retorna o valor original se não for numérico
-        return parseFloat(value).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }).replace('R$', '').trim();
-    }
-
-    formatNumeric(value, isDecimal = false) {
-        if (isNaN(value)) return value; // Retorna o valor original se não for numérico
-        if (isDecimal) {
-            // Formatação para número decimal
-            return parseFloat(value).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-        }
-        // Formatação para número inteiro
-        return parseInt(value).toLocaleString('pt-BR');
-    }
-
-    calculateFooterTotals(api) {
-        let footerTotals = [];
-        this.sumFooterColumns.forEach(index => {
-            // Verifica se a coluna existe
-            if (api.column(index).data().length) {
-                let total = api
-                    .column(index, { page: 'current' }) // Apenas dados da página atual
-                    .data()
-                    .reduce((a, b) => {
-                        let numericA = typeof a === 'string' ? (a.includes('R$') ? this.cleanMoney(a) : parseFloat(a)) : a;
-                        let numericB = typeof b === 'string' ? (b.includes('R$') ? this.cleanMoney(b) : parseFloat(b)) : b;
-                        return numericA + numericB;
-                    }, 0);
-
-                // Formata após a soma
-                let columnClass = this.columnClasses[index] || 'text-left';
-                if (columnClass.includes('money')) {
-                    footerTotals[index] = this.formatMoney(total);
-                } else if (columnClass.includes('numeric')) {
-                    footerTotals[index] = this.formatNumeric(total);
-                } else if (columnClass.includes('decimal')) {
-                    footerTotals[index] = this.formatNumeric(total, true);
-                }
-            } else {
-                footerTotals[index] = ''; // Valor vazio se não houver dados
-            }
-        });
-        return footerTotals;
-    }
-
-
-    applyColumnClasses(row, data, dataIndex) {
-        $(row).find('td').each((index, td) => {
-            let columnClass = this.columnClasses[index] || 'text-left';
-            $(td).removeClass(); // Remove classes antigas 
-            if (columnClass.includes('money')) {
-                $(td).text(this.formatMoney($(td).text()));  // Formata para dinheiro
-                $(td).addClass('text-right');  // Alinha à direita 
-            } else if (columnClass.includes('numeric')) {
-                $(td).text(this.formatNumeric($(td).text()));  // Formata número conforme tipo
-                $(td).addClass('text-center');  // Alinha ao centro 
-            } else if (columnClass.includes('decimal')) {
-                $(td).text(this.formatNumeric($(td).text(), true));  // Formata número com decimal
-                $(td).addClass('text-center');  // Alinha ao centro 
-            } else {
-                $(td).addClass('text-left');  // Alinha à esquerda para outras colunas
-            }
-        });
-    }
-
-    applyFooterClasses(api) {
-        let footerCells = $(api.table().footer()).find('th');
-        footerCells.each((index, td) => {
-            let columnClass = this.columnClasses[index] || 'text-left';
-            $(td).removeClass().addClass(columnClass); // Remove classes antigas e aplica as novas
-            if (columnClass.includes('money')) {
-                $(td).addClass('text-right');  // Alinha à direita no footer quando for "money"
-            } else if (columnClass.includes('numeric') || columnClass.includes('decimal')) {
-                $(td).addClass('text-center');  // Alinha ao centro no footer quando for "numeric" ou "decimal"
-            } else {
-                $(td).addClass('text-left');  // Alinha à esquerda para outras colunas
-            }
-        });
-    }
-
-    build() {
-        let tableId = `${this.divId}_table`;
-        let tableHtml = `
-            <table id="${tableId}" class='table table-bordered table-hover table-striped' style='width:100%; font-size:12px;'>
-                <thead>
-                    <tr>${this.columnNames.map(name => `<th class="text-center">${name}</th>`).join('')}</tr>
-                </thead>
-                <tbody></tbody>
-                <tfoot>
-                    <tr>${this.columnNames.map(() => `<th class="text-center"></th>`).join('')}</tr>
-                </tfoot>
-            </table>
-        `;
-
-        $(`#${this.divId}`).html(tableHtml);
-
-        let instance = this; // Captura o contexto da classe
-
-        // Merge com opções extras passadas
-        let options = $.extend({
-            data: this.data,
-            columns: this.columnNames.map(() => null), // Colunas dinâmicas
-            footerCallback: function (row, data, start, end, display) {
-                let api = this.api();
-                let footerTotals = instance.calculateFooterTotals(api); // Usa a instância da classe
-
-                // Verifica se há totais a serem aplicados
-                if (footerTotals && footerTotals.length) {
-                    footerTotals.forEach((total, index) => {
-                        let footerCell = api.column(index).footer();
-                        if (footerCell) { // Garante que a célula do rodapé existe
-                            $(footerCell).html(total);
-                            // Aplica as classes do rodapé
-                            instance.applyFooterClasses(api);
-                        }
-                    });
-                }
-            },
-            createdRow: function (row, data, dataIndex) {
-                // Usa o contexto correto para as funções de formatação
-                instance.applyColumnClasses(row, data, dataIndex);
-            }
-        }, this.extraOptions); // Mescla as opções extras
-
-        this.tabelaCriada = $(`#${tableId}`).DataTable(options);
-        // Garante que ajustar será chamado após a inicialização
-    }
-
-    ajustar() {
-        let instance = this; // Captura o contexto da classe
-
-        // evento para escutar a mudança dos botões de seleção de rádio
-        $('input[name="optionsTabela1[]"]').on('change', function () {
-            let dataColumn = this.value;
-            if (instance.tabelaCriada) { // Verifica se a tabela foi criada
-                instance.tabelaCriada.rowGroup().dataSrc(dataColumn).draw();
-            }
-        });
-
-        // Listener para rowgroup-datasrc
-        if (this.tabelaCriada) {
-            this.tabelaCriada.on('rowgroup-datasrc', function (e, dt, val) {
-                instance.tabelaCriada.order.fixed({
-                    pre: [
-                        [val, 'desc']
-                    ]
-                }).draw();
-            });
-        }
-
-        $('a[data-toggle="tab"]').on('shown.bs.tab', function(e) {
-            $($.fn.dataTable.tables(true)).DataTable().columns.adjust().draw();
-        });
-    }
-
-}
-
-
-class Tabela {
-    constructor(data, id, columnClasses, divRetorno, useDataTable, options = {}, classesTable = "") {
-        this.data = data;
-        this.id = id;
-        this.divRetorno = divRetorno;
-        this.classes = classesTable == "" ? ['table', 'table-bordered', 'table-hover', 'table-striped', 'w100perc'] : classesTable;
-        this.useDataTable = useDataTable;
-        this.options = options;
-        this.columnClasses = columnClasses;
-
-        if (this.useDataTable) {
-            this.criarTabelaComDataTable();
-        } else {
-            this.criarTabela();
-        }
-    }
-    criarCabecalho() {
-        const cabecalho = document.createElement('thead');
-        const linhaCabecalho = document.createElement('tr');
-        const colunas = Object.keys(this.data[0]);
-        for (const coluna of colunas) {
-            const colunaCabecalho = document.createElement('th');
-            colunaCabecalho.textContent = coluna.toUpperCase(); // Converter para maiúsculas
-            colunaCabecalho.style.textTransform = 'uppercase'; // Aplicar o estilo CSS
-            linhaCabecalho.appendChild(colunaCabecalho);
-            linhaCabecalho.classList.add("text-center");
-        }
-        cabecalho.appendChild(linhaCabecalho);
-        return cabecalho;
-    }
-    criarCorpo() {
-        const corpo = document.createElement('tbody');
-        for (let i = 0; i < this.data.length; i++) {
-            const linhaCorpo = document.createElement('tr');
-            const colunas = Object.values(this.data[i]);
-            for (let j = 0; j < colunas.length; j++) {
-                const colunaCorpo = document.createElement('td');
-                colunaCorpo.textContent = Array.isArray(colunas[j]) || typeof colunas[j] === 'object' ? JSON.stringify(colunas[j]) : colunas[j];
-                if (this.columnClasses && this.columnClasses[j]) {
-                    colunaCorpo.classList.add(this.columnClasses[j]);
-                }
-                linhaCorpo.appendChild(colunaCorpo);
-            }
-            corpo.appendChild(linhaCorpo);
-        }
-        return corpo;
-    }
-    criarTabela() {
-        const tabela = document.createElement('table');
-        if (this.id) {
-            tabela.id = this.id;
-        }
-        if (this.classes) {
-            tabela.classList.add(...this.classes);
-        }
-        const cabecalho = this.criarCabecalho();
-        const corpo = this.criarCorpo();
-        tabela.appendChild(cabecalho);
-        tabela.appendChild(corpo);
-        if (this.divRetorno != "") {
-            const div = document.getElementById(this.divRetorno);
-            div.innerHTML = '';
-            div.appendChild(tabela);
-        }
-        return tabela;
-    }
-
-    criarTabelaComDataTable() {
-        const tabela = this.criarTabela();
-        if (this.useDataTable) {
-            $(`#${this.id}`).DataTable(this.options);
-        }
-        return tabela;
-    }
-
-
-}
-
-class DataTableBuilder {
-    constructor(data, columnNames, centerColumns, rightAlignColumns, sumColumns, containerId, extraOptions = {}, route_detalhes) {
-        this.data = data;
-        this.columnNames = columnNames;
-        this.centerColumns = centerColumns;
-        this.rightAlignColumns = rightAlignColumns;
-        this.sumColumns = sumColumns;
-        this.containerId = containerId;
-        this.extraOptions = extraOptions;
-        this.route_detalhes = route_detalhes;
-        this.build();
-    }
-
-    build() {
-        const self = this;
-        const columns = this.columnNames.map((name, index) => {
-            const colDef = {
-                data: name,
-                title: name,
-                className: (this.centerColumns.includes(index) ? 'text-center ' : '') +
-                    (this.rightAlignColumns.includes(index) ? 'text-right' : '')
-            };
-
-            if (name === 'COD_POSTAGEM') {
-                colDef.render = (data, type, row) => {
-                    if (type === 'display' && typeof data === 'object' && 'display' in data && 'conteudo' in data && data.conteudo !== '') {
-                        // let conteudoJson;
-                        // if (typeof data.conteudo === 'string') {
-                        //     try {
-                        //         JSON.parse(data.conteudo); // Verifica se a string é JSON válida
-                        //         conteudoJson = data.conteudo;
-                        //     } catch (error) {
-                        //         console.error('Erro ao analisar JSON:', error);
-                        //         conteudoJson = JSON.stringify(data.conteudo); // Converte para JSON
-                        //     }
-                        // } else if (typeof data.conteudo === 'object' && data.conteudo !== null) {
-                        //     conteudoJson = JSON.stringify(data.conteudo); // Converte objeto para JSON
-                        // } else {
-                        //     console.error('Tipo de conteúdo inválido:', typeof data.conteudo);
-                        // }
-
-                        // // Adiciona o ícone com o evento onclick, usando JSON.stringify para garantir a formatação correta da string JSON
-                        // return `${data.display}&nbsp;&nbsp;&nbsp;<i class="fas fa-search detalhes_rastreio" style="cursor: pointer;" detalhes_rastreio='${conteudoJson}' detalhes_rastreio_title='${data.title}'></i>`;
-
-                        if (data.conteudo === 'S') {
-                            return `${data.display}&nbsp;&nbsp;&nbsp;<i class="fas fa-search detalhes_rastreio" style="cursor: pointer;" codigo_postagem='${data.display}' route_detalhes='${self.route_detalhes}'></i>`;
-                        }
-                    } else {
-                        return data.display;
-                    }
-                };
-            } else if (this.rightAlignColumns.includes(index) || this.centerColumns.includes(index)) {
-                colDef.render = (data, type, row) => {
-                    if (type === 'display' && !isNaN(parseFloat(data)) && isFinite(data)) {
-                        return self.formatValues(data);
-                    }
-                    return data;
-                };
-            }
-
-            return colDef;
-        });
-
-        const dataTable = $('<table>', {
-            id: 'dataTable' + this.containerId,
-            class: 'table display table-bordered table-hover table-striped small',
-            id: `${this.containerId}Tabela`,
-            style: 'width:100%'
-        });
-
-        const tfoot = $('<tfoot>').appendTo(dataTable);
-        const tfootRow = $('<tr>').appendTo(tfoot);
-
-        columns.forEach((column, index) => {
-            const td = $('<td>');
-            tfootRow.append(td);
-            if (this.centerColumns.includes(index)) {
-                td.addClass('text-center');
-            }
-        });
-
-        $('#' + this.containerId).html(dataTable);
-
-        const defaultOptions = {
-            data: this.data,
-            columns: columns.map(function (column) {
-                if (column.title.toLowerCase().indexOf('data') !== -1 && column.title.toLowerCase() !== 'database') {
-                    return {
-                        data: column.data,
-                        title: column.title,
-                        render: function (data, type, row) {
-                            if (type === 'display' || type === 'filter') {
-                                return moment(data).format('DD/MM/YYYY HH:mm:ss');
-                            }
-                            return data;
-                        }
-                    };
-                } else if (column.title.toLowerCase().indexOf('_dt_') !== -1 && column.data !== "") {
-                    return {
-                        data: column.data,
-                        title: column.title,
-                        render: function (data, type, row) {
-                            if (type === 'display' || type === 'filter') {
-                                return data.split('.')[0];
-                            }
-                            return data;
-                        }
-                    };
-                } else {
-                    return column;
-                }
-            }),
-            scrollY: "400px",
-            scrollX: true,
-            destroy: true,
-            order: [[1, 'desc']],
-            createdRow: function (row, data, dataIndex) {
-                $(row).children().each((index, td) => {
-                    if (self.centerColumns.includes(index)) {
-                        $(td).addClass('text-center');
-                    } else if (self.rightAlignColumns.includes(index)) {
-                        $(td).addClass('text-right');
-                    }
-                });
-            },
-            footerCallback: function (row, data, start, end, display) {
-                const api = this.api();
-                self.sumColumns.forEach(colIndex => {
-                    let sum = 0;
-                    const columnData = api.column(colIndex, { page: 'current' }).data();
-                    sum += columnData.reduce((a, b) => (parseFloat(a) || 0) + (parseFloat(b) || 0), 0);
-                    $(api.column(colIndex).footer()).html(self.formatValues(sum));
-                });
-            }
-        };
-
-        const tableOptions = $.extend(true, {}, defaultOptions, this.extraOptions);
-
-        try {
-            const table = dataTable.DataTable(tableOptions);
-            return table;
-        } catch (error) {
-            console.error('Erro ao inicializar DataTable:', error);
-        }
-    }
-
-    formatValues(value) {
-        if (!isNaN(value) && isFinite(value)) {
-            if (Number.isInteger(value)) {
-                return doubleToMoney(value, 0);
-            } else {
-                return doubleToMoney(value);
-            }
-        }
-        return value;
-    }
-}
-
-
 $.extend($.fn.dataTable.defaults, {
     "scrollY": "500px",
     "scrollX": true,
@@ -480,4 +68,240 @@ function addCell(row, value, colspan = 1, className = '') {
     cell.colSpan = colspan;
     cell.className = className;
     row.appendChild(cell);
+}
+
+function __renderDataTable(
+    data,
+    div_retorno,
+    extraOptions = {},
+    class_table = 'table display table-bordered table-hover table-striped small sem-quebra',
+    returnPromise = false // <- NOVO: se true, retorna Promise que resolve após render completo
+) {
+    const dados = data.dados;
+    const columnConfigs = data.colunas_config;
+    const filtrosHeader = data.filtrosHeader ?? [];
+
+    const tableId = `dataTable_${Date.now()}`;
+    const ns = `.dtFix-${tableId}`;
+
+    const $table = $('<table>', { id: tableId, class: class_table, style: 'width:100%' });
+    $('#' + div_retorno).html($table);
+
+    // Cabeçalho/rodapé
+    const $thead = $('<thead>');
+    const $tfoot = $('<tfoot>');
+    const $headerRow = $('<tr>');
+    const $footerRow = $('<tr>');
+    columnConfigs.forEach(cfg => {
+        $headerRow.append('<th>' + (cfg.nome || '') + '</th>');
+        $footerRow.append('<th class="' + (cfg.alinhamento || '') + '"></th>');
+    });
+    $thead.append($headerRow);
+    $tfoot.append($footerRow);
+    $table.append($thead).append($tfoot);
+
+    // Promise para o modo assíncrono
+    let resolveReady;
+    const readyPromise = new Promise(r => { resolveReady = r; });
+
+    // Opções padrão (otimizadas + Scroller)
+    const defaultOptions = {
+        data: dados,
+        columns: columnConfigs.map((cfg, idx) => ({
+            data: idx,
+            className: ((cfg.alinhamento || '') + ' no-wrap').trim(),
+            render: function (d, type) {
+                if (d == null || d === '') return '';
+                // só formata no display; ordenação/pesquisa usam o valor bruto
+                if (type !== 'display') return d;
+
+                if (cfg.decimalPlaces === 'date') return moment(d).isValid() ? moment(d).format('DD/MM/YYYY') : '';
+                if (cfg.decimalPlaces === 'datetime') return moment(d).isValid() ? moment(d).format('DD/MM/YYYY HH:mm:ss') : '';
+                if (typeof cfg.decimalPlaces === 'number' && !isNaN(d)) {
+                    return Number(d).toLocaleString('pt-BR', {
+                        minimumFractionDigits: cfg.decimalPlaces,
+                        maximumFractionDigits: cfg.decimalPlaces
+                    });
+                }
+                return d;
+            }
+        })),
+        destroy: true,
+        responsive: false,
+        autoWidth: false,
+        deferRender: true,
+        processing: true,
+        scrollY: '500px',
+        scrollX: true,
+        scroller: true,  // precisa do JS/CSS do Scroller incluídos
+        paging: true,    // Scroller requer paging habilitado (mesmo sem paginação visível)
+        // ordering: [[1, 'desc']],
+        columnDefs: [{ targets: '_all', className: 'no-wrap' }],
+
+        footerCallback: function () {
+            const api = this.api();
+
+            // helper robusto para "1.234.567,89", "1234.56", números ou vazio
+            // Substitua seu toNumber por este:
+            const toNumber = (v) => {
+                if (v == null || v === '') return 0;
+                if (typeof v === 'number') return v;
+
+                let s = String(v).trim();
+                // mantém apenas dígitos, sinais e separadores
+                s = s.replace(/[^\d.,+-]/g, '');
+
+                const hasComma = s.indexOf(',') !== -1;
+                const hasDot = s.indexOf('.') !== -1;
+
+                if (hasComma && hasDot) {
+                    // o separador decimal é o último que aparecer
+                    const lastComma = s.lastIndexOf(',');
+                    const lastDot = s.lastIndexOf('.');
+                    if (lastComma > lastDot) {
+                        // vírgula é decimal (pt-BR): remove pontos de milhar e troca vírgula por ponto
+                        s = s.replace(/\./g, '').replace(',', '.');
+                    } else {
+                        // ponto é decimal (en-US): remove vírgulas de milhar
+                        s = s.replace(/,/g, '');
+                    }
+                } else if (hasComma && !hasDot) {
+                    // só vírgula presente -> trate como decimal vírgula
+                    s = s.replace(/\./g, '').replace(',', '.');
+                } else {
+                    // só ponto ou nenhum -> trate ponto como decimal e remova vírgulas (se houver)
+                    s = s.replace(/,/g, '');
+                }
+
+                const n = parseFloat(s);
+                return isNaN(n) ? 0 : n;
+            };
+
+
+            // se quiser permitir escopo por coluna ou global, pode ler de extraOptions.sumScope
+            const scope = (idx, cfg) => {
+                const colScope = (cfg && cfg.sumScope) || (extraOptions && extraOptions.sumScope) || 'all';
+                // 'all' => tudo filtrado; 'page' => só o que está na tela
+                return colScope === 'page' ? { page: 'current' } : { search: 'applied' };
+            };
+
+            columnConfigs.forEach((cfg, idx) => {
+                if (cfg.somar_footer === true) {
+                    const arr = api.column(idx, scope(idx, cfg)).data().toArray();
+                    const total = arr.reduce((s, v) => s + toNumber(v), 0);
+                    $(api.column(idx).footer()).html(
+                        Number(total).toLocaleString('pt-BR', {
+                            minimumFractionDigits: cfg.decimalPlaces || 0,
+                            maximumFractionDigits: cfg.decimalPlaces || 0
+                        })
+                    );
+                } else if (typeof cfg.somar_footer === 'object') {
+                    // Ex.: cfg.somar_footer = [' %', [baseIdx, compIdx]]
+                    const [baseIdx, compIdx] = cfg.somar_footer[1];
+
+                    const baseArr = api.column(baseIdx, scope(baseIdx, cfg)).data().toArray();
+                    const compArr = api.column(compIdx, scope(compIdx, cfg)).data().toArray();
+
+                    const somaBase = baseArr.reduce((s, v) => s + toNumber(v), 0);
+                    const somaComp = compArr.reduce((s, v) => s + toNumber(v), 0);
+                    const perc = (somaBase > 0 && somaComp > 0) ? (somaComp / somaBase * 100) : 0;
+
+                    $(api.column(idx).footer()).html(
+                        Number(perc).toLocaleString('pt-BR', {
+                            minimumFractionDigits: cfg.decimalPlaces || 0,
+                            maximumFractionDigits: cfg.decimalPlaces || 0
+                        }) + (cfg.somar_footer[0] ?? '')
+                    );
+                }
+            });
+        },
+
+        initComplete: function () {
+            const api = this.api();
+
+            const finalize = () => {
+                // ajusta layout e resolve a promise após 2 RAFs (garante paint)
+                api.columns.adjust().draw(false);
+                requestAnimationFrame(() => {
+                    requestAnimationFrame(() => resolveReady && resolveReady(api.table()));
+                });
+            };
+
+            if (!filtrosHeader.length) {
+                finalize();
+                return;
+            }
+
+            // monta filtros após o primeiro paint
+            setTimeout(() => {
+                filtrosHeader.forEach((idx) => {
+                    const column = api.column(idx);
+                    const $header = $(column.header());
+                    const title = $header.text();
+                    $header.empty();
+
+                    const $container = $('<div class="col-12" style="min-width:180px;"></div>');
+                    const $titleDiv = $('<div>').text(title);
+                    const $select = $('<select multiple="multiple" class="form-control small"></select>');
+                    $container.append($titleDiv).append($select);
+                    $header.append($container);
+
+                    const uniques = [...new Set(column.data().toArray().filter(d => d != null && d !== ''))].sort();
+                    uniques.forEach(d => $select.append('<option value="' + d + '">' + d + '</option>'));
+
+                    $select.multiselect({
+                        includeSelectAllOption: true,
+                        includeSelectAllOptionMin: 3,
+                        selectAllText: "Todos",
+                        selectAllDeselectAll: false,
+                        enableFiltering: true,
+                        maxHeight: 200,
+                        fontSize: 14
+                    });
+
+                    $select.on('change' + ns, function () {
+                        const vals = $(this).val();
+                        if (vals && vals.length) {
+                            const escaped = vals.map(v => v.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+                            column.search(escaped.join('|'), true, false).draw(false);
+                        } else {
+                            column.search('', true, false).draw(false);
+                        }
+                    });
+                });
+
+                finalize();
+            }, 0);
+        }
+    };
+
+    const options = $.extend(true, {}, defaultOptions, extraOptions);
+    const table = $table.DataTable(options);
+
+    // Ajustes + cleanup
+    const adjust = () => {
+        table.columns.adjust();
+        if (table.fixedHeader) table.fixedHeader.adjust();
+    };
+
+    $(document).off('visibilitychange' + ns).on('visibilitychange' + ns, function () {
+        if (!document.hidden) adjust();
+    });
+
+    let resizeObserver = null;
+    if (window.ResizeObserver) {
+        resizeObserver = new ResizeObserver(() => adjust());
+        resizeObserver.observe($table.get(0));
+    } else {
+        $(window).off('resize' + ns).on('resize' + ns, adjust);
+    }
+
+    table.on('destroy.dt', function () {
+        $(document).off('visibilitychange' + ns);
+        $(window).off('resize' + ns);
+        if (resizeObserver) { resizeObserver.disconnect(); resizeObserver = null; }
+    });
+
+    // Compatível + assíncrono opcional
+    return returnPromise ? readyPromise : table;
 }

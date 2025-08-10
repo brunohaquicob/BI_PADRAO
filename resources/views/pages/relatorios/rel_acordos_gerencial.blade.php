@@ -182,23 +182,7 @@
                     allowClear: true, // Adiciona um botão de limpar seleção
                     width: '100%', // Define a largura do seletor
                 });
-                //let data = [
-                    //[1, 'Produto A', 5, '1234.56', 1],
-                    //[2, 'Produto B', 3, '567.89', 10]
-                //];
-
-                //let columnNames = ['ID', 'Produto', 'Quantidade', 'Preço', 'Numero'];
-                //let columnClasses = ['numeric', 'left', 'decimal', 'money', 'numeric']; // 'numeric' e 'decimal' vão formatar como números inteiros e decimais
-                //let sumFooterColumns = [2, 3, 4]; // Soma a quantidade e o preço
-
-               // let extraOptions = {
-                    //ordering: false, // Desabilitar ordenação
-                   // pageLength: 10 // Número de registros por página
-                //};
-
-                //let dataTable = new criarDataTableNew('resultado-aba3-tabela', data, columnNames, columnClasses, sumFooterColumns, extraOptions, 'resultado-aba3');
-                //dataTable.build();
-
+                
                 $('#btnBuscarDados').click(function() {
                     FormValidator.validar('form_filtros_pesquisa').then((isValid) => {
                         if (isValid) {

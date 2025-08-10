@@ -58,7 +58,7 @@ class PagesController extends Controller {
         }
 
         $data = [
-            'lojas' => $dados_equipes['dados'],
+            'equipes_loja' => $dados_equipes['dados'],
         ];
 
         $routeName = Route::currentRouteName();

@@ -1,0 +1,96 @@
+/* Highcharts (opcional manter) */
+@import url("https://code.highcharts.com/css/highcharts.css");
+@import url("https://code.highcharts.com/dashboards/css/datagrid.css");
+@import url("https://code.highcharts.com/dashboards/css/dashboards.css");
+
+/* ===== Escopo do dashboard ===== */
+.hcdb {
+  padding: 10px;
+  background-color: var(--highcharts-neutral-color-5);
+  font-size: 14px;          /* evita herdar fontes gigantes de fora */
+  overflow: visible;        /* evita cortes dentro do card */
+}
+
+/* respiro vertical entre blocos (kpis -> charts -> grid) */
+.hcdb > * + * { margin-top: 16px; }
+
+/* “cartão” padrão dos componentes do Highcharts Dashboards */
+.hcdb .hc-cell > .highcharts-dashboards-component {
+  position: relative;
+  margin: 0;
+  padding: 10px;
+  background-clip: border-box;
+  background-color: var(--highcharts-background-color);
+}
+
+/* ================= KPIs ================= */
+.hcdb .highcharts-dashboards-component-kpi-content {
+  display: flex;
+  flex-direction: column;
+  padding: 10px !important;
+}
+
+.hcdb .highcharts-dashboards-component-kpi {
+  min-height: 100px;
+  text-align: center;
+}
+
+/* bolinha do título do KPI (cor vem da var --kpi-color, ou da paleta) */
+.hcdb .highcharts-dashboards-component-title::before {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  display: inline-block;
+  margin-right: 6px;
+  content: " ";
+  background-color: var(--kpi-color, var(--highcharts-color-0));
+}
+
+/* tipografia responsiva dos KPIs */
+.hcdb .highcharts-kpi .highcharts-title {
+  font-size: clamp(12px, 2.2vw, 18px);
+}
+
+.hcdb .highcharts-kpi .highcharts-value {
+  font-size: clamp(16px, 4vw, 28px);
+  white-space: nowrap;
+  line-height: 1.1;
+  font-weight: 700;
+}
+
+.hcdb .highcharts-kpi .highcharts-subtitle {
+  font-size: clamp(11px, 1.8vw, 14px);
+  opacity: .85;
+}
+
+@media (max-width: 480px) {
+  .hcdb .highcharts-kpi .highcharts-subtitle { display: none; }
+}
+
+/* =============== Gráficos (BS4 grid) =============== */
+/* Cada gráfico deve estar dentro de .chart-cell (que fica dentro de uma col BS4) */
+.hcdb .chart-cell {
+  min-height: 360px;     /* altura base confortável */
+}
+
+@media (min-width: 1200px) {
+  .hcdb .chart-cell { min-height: 400px; }
+}
+
+/* Highcharts ocupa 100% do recipiente */
+.hcdb .chart-cell .highcharts-dashboards-component,
+.hcdb .chart-cell .highcharts-container,
+.hcdb .chart-cell .highcharts-root {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* Linhas de referência */
+.hcdb .highcharts-plot-line {
+  stroke-dasharray: 2px;
+  stroke: var(--highcharts-color-3);
+}
+.hcdb .highcharts-plot-line-label {
+  fill: var(--highcharts-color-3);
+}
+
