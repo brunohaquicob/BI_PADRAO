@@ -473,7 +473,7 @@
                     },
                     tooltipExtraKey: tooltipExtraKey,
                     tooltipMiniPie: {
-                        title: 'TOP 6 Fases Recuperado',
+                        title: 'FASES COM MELHOR RECUPERAÇÃO',
                         width: 400,
                         height: 260,
                         labelDistance: 12,
@@ -540,7 +540,7 @@
                     },
                     tooltipExtraKey: tooltipExtraKey,
                     tooltipMiniPie: {
-                        title: 'TOP 6 Fases Recuperado',
+                        title: 'FASES COM MELHOR RECUPERAÇÃO',
                         width: 380,
                         height: 260,
                         labelDistance: 16,

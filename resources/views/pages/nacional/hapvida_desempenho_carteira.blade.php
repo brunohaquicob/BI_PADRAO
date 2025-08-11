@@ -355,7 +355,7 @@
                     keyTransform: k => (k.includes('->') ? k.split('->')[1].trim() : k), // pra casar com key_ajust
                     groupTransform: g => (String(g).includes('->') ? String(g).split('->')[1].trim() : g),
                     // Opcional:
-                    //topN: 6, // mantém só 8 maiores por key
+                    topN: 6, // mantém só 8 maiores por key
                     // minPct: 3  // agrupa <3% em "Outros",
                     toNumber: Utilitarios.parsePtNumber
                 });
@@ -392,7 +392,7 @@
                     },
                     tooltipExtraKey: tooltipExtraKey,
                     tooltipMiniPie: {
-                        title: 'TOP 6 Fases Recuperado',
+                        title: 'FASES COM MELHOR RECUPERAÇÃO',
                         width: 400,
                         height: 260,
                         labelDistance: 12,
