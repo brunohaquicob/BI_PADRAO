@@ -157,4 +157,4 @@
   line-height: 1 !important;
 }
 
-
+.highcharts-tooltip-container{ z-index:3000 !important; pointer-events:none; }

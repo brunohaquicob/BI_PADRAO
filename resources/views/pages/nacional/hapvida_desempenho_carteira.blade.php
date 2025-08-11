@@ -225,7 +225,9 @@
 
                 const table = await __renderDataTable(tabela, divTabela, {
                     ordering: true,
-                    order: [[8, 'desc']],
+                    order: [
+                        [8, 'desc']
+                    ],
                     externalFilters: {
                         container: '#filtrosGraficos',
                         columns: tabela.filtrosHeader ?? [], // ou [0,3,5] etc.
@@ -270,13 +272,13 @@
                 }
 
                 //const ar_total          = Utilitarios.sumColumnsFormula(rows, ar_valores);
-                const ar_total = Utilitarios.sumColumns(rows, ar_valores);
-                const ar_implantacao = Utilitarios.sumColumns(rows, ar_valores, 0);
-                const ar_cancelado = Utilitarios.sumColumns(rows, ar_valores, 1);
-                const ar_frente = Utilitarios.sumColumns(rows, ar_valores, 2);
-                const ar_operadora = Utilitarios.sumColumns(rows, ar_valores, 4);
-                const ar_porte = Utilitarios.sumColumns(rows, ar_valores, 5);
-                const ar_fase = Utilitarios.sumColumns(rows, ar_valores, 6);
+                const ar_total          = Utilitarios.sumColumns(rows, ar_valores);
+                const ar_implantacao    = Utilitarios.sumColumns(rows, ar_valores, 0);
+                const ar_cancelado      = Utilitarios.sumColumns(rows, ar_valores, 1);
+                const ar_frente         = Utilitarios.sumColumns(rows, ar_valores, 2);
+                const ar_operadora      = Utilitarios.sumColumns(rows, ar_valores, 4);
+                const ar_porte          = Utilitarios.sumColumns(rows, ar_valores, 5);
+                const ar_fase           = Utilitarios.sumColumns(rows, ar_valores, 6);
 
                 //ATUALIZAR CARDS
                 const time_animacao = 1500;
@@ -325,16 +327,94 @@
                 });
 
 
-                criarGraficoChartsFlexible(ar_implantacao, 'card_1_1', 'Desempenho Implantação', 'Vidas', 0, 'column');
-                criarGraficoChartsFlexible(ar_porte, 'card_2', 'Desempenho Porte', 'Vidas', 0, 'column');
-                criarGraficoChartsFlexible(ar_operadora, 'card_2_1', 'Desempenho Operadora', 'Vidas', 0, 'column');
-                criarGraficoChartsFlexible(ar_frente, 'card_3', 'Desempenho Frente', 'Vidas', 0, 'column');
-                criarGraficoChartsFlexible(ar_cancelado, 'card_3_1', 'Desempenho Cancelados', 'Vidas', 0, 'column');
-                criarGraficoChartsFlexible(ar_fase, 'card_4', 'Desempenho por Fase', 'Vidas', 0, 'column');
+                criarGraficoChartsFlexible(ar_implantacao, 'card_1_1', 'Desempenho Implantação', 'Vidas',   0, 'column', rows, 0);
+                criarGraficoChartsFlexible(ar_porte, 'card_2', 'Desempenho Porte', 'Vidas',                 0, 'column', rows, 5);
+                criarGraficoChartsFlexible(ar_operadora, 'card_2_1', 'Desempenho Operadora', 'Vidas',       0, 'column', rows, 4);
+                criarGraficoChartsFlexible(ar_frente, 'card_3', 'Desempenho Frente', 'Vidas',               0, 'column', rows, 2);
+                criarGraficoChartsFlexible(ar_cancelado, 'card_3_1', 'Desempenho Cancelados', 'Vidas',      0, 'column', rows, 1);
+                criarGraficoChartsFlexible2(ar_fase, 'card_4', 'Desempenho por Fase', 'Vidas',              0, 'column');
 
             }
 
-            function criarGraficoChartsFlexible(ar_dados, id, title, subtitle = 'Implantado/Aberto/Recuperado', decimal = 2, tipo_grafico = 'areaspline') {
+            
+            function criarGraficoChartsFlexible(ar_dados, id, title, subtitle = 'Aberto/Recebidos', decimal = 2, tipo_grafico = 'areaspline', rows, key_coluna = 1) {
+
+                // 1. Pegar as chaves e ordenar (ano-mês)
+                let keys = Object.keys(ar_dados).sort();
+                let key_ajust = keys.map(s => s.includes('->') ? s.split('->')[1].trim() : s);
+                // 2. Criar arrays separados
+                let implantado = keys.map(k => ar_dados[k].VIDA);
+                let aberto = keys.map(k => ar_dados[k].VIDA - ar_dados[k].VIDAR - ar_dados[k].VIDAD);
+                let recebido = keys.map(k => ar_dados[k].VIDAR);
+                let devolvido = keys.map(k => ar_dados[k].VIDAD);
+
+                let tooltipExtraKey = Utilitarios.pieBreakdownBy(rows, {
+                    keyCol: key_coluna, // DATA_IMPLANTACAO
+                    groupCol: 6, // FASE
+                    valueCol: 9, // recuperado
+                    keyTransform: k => (k.includes('->') ? k.split('->')[1].trim() : k), // pra casar com key_ajust
+                    groupTransform: g => (String(g).includes('->') ? String(g).split('->')[1].trim() : g),
+                    // Opcional:
+                    //topN: 6, // mantém só 8 maiores por key
+                    // minPct: 3  // agrupa <3% em "Outros",
+                    toNumber: Utilitarios.parsePtNumber
+                });
+                console.log(tooltipExtraKey)
+                let series_ar = [{
+                        name: 'Em aberto',
+                        type: tipo_grafico,
+                        data: aberto,
+                        prefix: '',
+                        decimals: decimal
+                    },
+                    {
+                        name: 'Devolvido',
+                        type: tipo_grafico,
+                        data: devolvido,
+                        prefix: '',
+                        decimals: decimal
+                    },
+                    {
+                        name: 'Recuperadas',
+                        type: 'spline',
+                        data: recebido,
+                        prefix: '',
+                        decimals: decimal
+                    }
+                ];
+
+                const chart = new HighchartsFlexible2({
+                    container: id,
+                    title: title,
+                    subtitle: subtitle,
+                    tooltip: {
+                        decimals: decimal
+                    },
+                    tooltipExtraKey: tooltipExtraKey,
+                    tooltipMiniPie: {
+                        title: 'TOP 6 Fases Recuperado',
+                        width: 400,
+                        height: 260,
+                        labelDistance: 12,
+                        valueFontSize: '10px',
+                        valueDecimals: decimal,
+                        percentDecimals: 2
+                    },
+                    //seriesPerc: ['Implantadas'],
+                    colors: null,
+                    xAxis: {
+                        type: 'category',
+                        categories: key_ajust
+                    },
+                    yAxis: {
+                        title: '',
+                        min: 0
+                    },
+                    series: series_ar
+                }).build();
+            }
+
+            function criarGraficoChartsFlexible2(ar_dados, id, title, subtitle = 'Implantado/Aberto/Recuperado', decimal = 2, tipo_grafico = 'areaspline') {
                 // 1. Pegar as chaves e ordenar (ano-mês)
                 let keys = Object.keys(ar_dados).sort();
                 let key_ajust = keys.map(s => s.includes('->') ? s.split('->')[1].trim() : s);

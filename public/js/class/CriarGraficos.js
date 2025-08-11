@@ -1125,8 +1125,7 @@ class HighchartsFlexible2 {
             chart: { type: this.options.chartType },
             title: { text: this.options.title },
             subtitle: { text: this.options.subtitle },
-            // colors: this.options.colors,
-            ...(this.options.colors ? { colors } : {}),
+            ...(this.options.colors ? { colors: this.options.colors } : {}),
             xAxis: this._buildXAxis(),
             yAxis: this.options.yAxis,
             tooltip: this._buildTooltip(),
@@ -1135,6 +1134,14 @@ class HighchartsFlexible2 {
         };
 
         this.chart = Highcharts.chart(this.options.container, cfg);
+
+        Highcharts.addEvent(this.chart.tooltip, 'hide', () => {
+            if (this._miniPieChart) {
+                try { this._miniPieChart.destroy(); } catch (_) { }
+                this._miniPieChart = null;
+                this._miniPieKey = null;
+            }
+        });
         return this.chart;
     }
 
@@ -1175,14 +1182,54 @@ class HighchartsFlexible2 {
 
     _buildTooltip() {
         const seriesMeta = this.options.series;
-        const xType = this.options.xAxis?.type ?? 'category';
+        const xType = this.options?.xAxis?.type ?? 'category';
         const seriesPerc = this.options.seriesPerc || [];
         const defaultDecimals = this.options?.tooltip?.decimals ?? 2;
+
+        const extraByKey = this.options.tooltipExtraKey || null;
+        const pieOpts = Object.assign({
+            show: true,
+            title: null,
+            width: 210,
+            height: 140,
+            cardMinWidth: 340,
+            dataLabelsDecimals: 0,
+            legend: false,
+            nameMaxChars: 6,
+            outsideDistance: 12,
+            insideDistance: -34
+        }, this.options.tooltipMiniPie || {});
+
+        const self = this;
+        this._miniPieChart = null;
+        this._miniPieKey = null;
+        // >>> inicializa UID AQUI (antes de usar no pieId)
+        this._uid = this._uid || Math.random().toString(36).slice(2);
+
+        // normalizador de chave
+        const norm = s => String(s ?? '')
+            .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+            .replace(/\s+/g, ' ')
+            .trim()
+            .toLowerCase();
+
+        // mapa normalizado (cria 1x)
+        const getExtraForKey = (k) => {
+            if (!extraByKey) return null;
+            if (!self._extraNormMap) {
+                self._extraNormMap = {};
+                Object.keys(extraByKey).forEach(key => {
+                    self._extraNormMap[norm(key)] = extraByKey[key];
+                });
+            }
+            return extraByKey[k] || extraByKey[String(k)] || self._extraNormMap[norm(k)] || null;
+        };
 
         return {
             shared: true,
             useHTML: true,
             borderWidth: 0,
+            outside: true,
             formatter: function () {
                 const fmtNumber = (v, dec) =>
                     new Intl.NumberFormat('pt-BR', {
@@ -1190,29 +1237,34 @@ class HighchartsFlexible2 {
                         maximumFractionDigits: dec ?? 0
                     }).format(v);
 
+                const rawKey = (xType === 'datetime') ? this.x : this.key;
                 let keyLabel = this.key;
-                if (xType === 'datetime') {
-                    keyLabel = Highcharts.dateFormat('%e. %b %Y', this.x);
-                }
+                if (xType === 'datetime') keyLabel = Highcharts.dateFormat('%e. %b %Y', this.x);
 
-                let totalGeral = 0;
-                let totalBase = 0;
+                let totalGeral = 0, totalBase = 0;
                 const pontos = [];
-
                 this.points.forEach(p => {
                     totalGeral += (p.y || 0);
                     const isBase = seriesPerc.includes(p.series.name);
-                    if (!isBase) {
-                        totalBase += (p.y || 0);
-                    }
+                    if (!isBase) totalBase += (p.y || 0);
                     pontos.push({ ...p, isBase });
                 });
 
-                let html = `<div class="panel panel-default" style="min-width:230px;margin:0;">
-                <div class="panel-heading" style="font-weight:bold; text-align:center; padding:5px 10px;">
-                    ${keyLabel}
-                </div>
-                <div class="list-group" style="margin:0;">`;
+                // resolve dados extras pela key
+                const dataObjResolved = getExtraForKey(rawKey) || getExtraForKey(keyLabel);
+                const entries = Object.entries(dataObjResolved || {});
+                console.log()
+                const totalPie = entries.reduce((s, [, v]) => s + (+v || 0), 0);
+                const hasExtra = pieOpts.show && entries.length && totalPie > 0;
+
+                // id único por instância + key
+                const pieId = `hc-mini-pie-${self._uid}-${self._slug(rawKey)}`;
+
+                // HTML
+                let html = `
+                <div class="card shadow-sm small" style="min-width:${pieOpts.cardMinWidth}px;margin:0;">
+                    <div class="card-header py-1 text-center font-weight-bold">${keyLabel}</div>
+                    <ul class="list-group list-group-flush">`;
 
                 pontos.forEach(point => {
                     const serie = seriesMeta.find(s => s.name === point.series.name) || {};
@@ -1224,27 +1276,113 @@ class HighchartsFlexible2 {
                     let percStr = '';
                     if (!point.isBase && totalBase) {
                         const perc = (point.y / totalBase * 100);
-                        percStr = `<small class="text-muted">(${perc.toLocaleString('pt-BR', {
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 2
-                        })}%)</small>`;
+                        percStr = `<small class="text-muted">(${perc.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%)</small>`;
                     }
 
-                    html += `<div class="list-group-item" style="display:flex;justify-content:space-between;align-items:center;padding:5px 10px;">
-                    <span><span style="color:${point.color}">\u25CF</span> ${point.series.name}</span>
-                    <span>&nbsp;&nbsp;<b>${prefix}${valueStr}${suffix}</b> ${percStr}</span>
-                </div>`;
+                    html += `
+                        <li class="list-group-item d-flex justify-content-between align-items-center py-1">
+                            <span><span style="color:${point.color}">\u25CF</span> ${point.series.name}</span>
+                            <span><b>${prefix}${valueStr}${suffix}</b> ${percStr}</span>
+                        </li>`;
                 });
 
                 if (!seriesPerc?.length) {
                     const totalStr = fmtNumber(totalGeral, defaultDecimals);
-                    html += `<div class="list-group-item" style="font-weight:bold;text-align:right;">Total: ${totalStr}</div>`;
+                    html += `<li class="list-group-item text-right"><b>Total:</b> ${totalStr}</li>`;
                 }
+
+                if (hasExtra) {
+                    const titleHtml = pieOpts.title ? `<div class="small text-muted mb-1 text-center">${pieOpts.title}</div>` : '';
+                    html += `
+                    <li class="list-group-item">
+                        ${titleHtml}
+                        <div id="${pieId}" style="width:${pieOpts.width}px;height:${pieOpts.height}px;margin:0 auto;"></div>
+                    </li>`;
+                }
+
+                html += `</ul></div>`;
+
+                // render do mini-pie (com retry)
+                if (hasExtra) {
+                    const data = entries.map(([name, val]) => ({ name, y: Number(val) || 0 }));
+                    const cacheKey = `${self.options.container}|${rawKey}`;
+
+                    const renderPie = (tries = 15) => {
+                        const el = document.getElementById(pieId);
+                        if (!el) { if (tries > 0) return setTimeout(() => renderPie(tries - 1), 16); return; }
+
+                        if (self._miniPieChart && self._miniPieKey !== cacheKey) {
+                            try { self._miniPieChart.destroy(); } catch (_) { }
+                            self._miniPieChart = null;
+                        }
+
+                        self._miniPieChart = self._createMiniPie(pieId, data, pieOpts);
+                        self._miniPieKey = cacheKey;
+                    };
+
+                    renderPie();
+                }
+
                 return html;
             }
         };
     }
 
+
+    _slug(str) {
+        return String(str).toLowerCase().replace(/[^a-z0-9]+/gi, '-');
+    }
+    _createMiniPie(containerId, data, opts = {}) {
+        const width = opts.width ?? 210;
+        const height = opts.height ?? 140;
+
+        return Highcharts.chart(containerId, {
+            chart: {
+                type: 'pie', backgroundColor: 'transparent',
+                width, height, animation: false
+            },
+            title: { text: null },
+            credits: { enabled: false },
+            exporting: { enabled: false, buttons: { contextButton: { enabled: false } } },
+            tooltip: { enabled: false },
+            legend: { enabled: !!opts.legend },
+            plotOptions: {
+                pie: {
+                    colorByPoint: true,
+                    size: '90%',
+                    dataLabels: {
+                        enabled: true,
+                        useHTML: true,
+                        softConnector: true,
+                        distance: (opts.labelDistance ?? 16),
+                        formatter: function () {
+                            const fmt = (v, d = 0) => new Intl.NumberFormat('pt-BR', {
+                                minimumFractionDigits: d, maximumFractionDigits: d
+                            }).format(v);
+
+                            const name = this.point.name;
+                            const yStr = fmt(this.point.y, opts.valueDecimals ?? 0);
+                            const pStr = Highcharts.numberFormat(this.percentage, opts.percentDecimals ?? 1);
+
+                            return `
+                            <div style="text-align:center; line-height:1.1;">
+                                <div style="font-weight:600;">${name}</div>
+                                <div style="font-size:${opts.valueFontSize ?? '10px'};">
+                                ${yStr} <small>(${pStr}%)</small>
+                                </div>
+                            </div>`;
+                        },
+                        style: {
+                            fontSize: (opts.labelFontSize ?? '10px'),
+                            textOutline: 'none'
+                        }
+                    }
+                }
+            }
+            ,
+            series: [{ name: 'Percentage', data }]
+        });
+    }
 }
 
 class DashMicro {

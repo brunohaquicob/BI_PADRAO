@@ -302,7 +302,116 @@ class Utilitarios {
         return out;
     }
 
+    static parsePtNumber(v) {
+        if (typeof v === 'number') return v;
+        if (v == null || v === '') return 0;
 
+        let s = String(v).trim()
+            .replace(/\s/g, '')
+            .replace(/[R$\u00A0€£¥]/g, '');
+
+        // negativo entre parênteses
+        let neg = false;
+        if (/^\(.*\)$/.test(s)) { neg = true; s = s.slice(1, -1); }
+
+        // se tem vírgula decimal e ponto de milhar: 1.234,87 -> 1234.87
+        if (/,/.test(s) && /\.\d{3}/.test(s)) s = s.replace(/\./g, '').replace(',', '.');
+        // se só tem vírgula: 123,87 -> 123.87
+        else if (/,/.test(s)) s = s.replace(',', '.');
+        // se só tem ponto (padrão US): 1,234.87 -> 1234.87
+        else s = s.replace(/,/g, '');
+
+        const n = parseFloat(s);
+        return neg ? -n : (isFinite(n) ? n : 0);
+    }
+
+    static pieBreakdownBy(rows, {
+        keyCol,          // ex.: 1
+        groupCol,        // ex.: 2
+        valueCol,        // ex.: 6  | '6 - 7' | 'Recebido - Aberto' | (r,get,num)=>...
+        keyTransform = k => k,
+        groupTransform = g => g,
+        topN = 0,  // mantém só topN grupos por key (resto -> "Outros")
+        minPct = 0,  // agrupa < minPct% em "Outros"
+        valueClampMin = null, // ex.: 0 para não deixar fatia negativa
+        toNumber = v => (typeof v === 'number'
+            ? v
+            : (Number(String(v).replace(/\./g, '').replace(',', '.')) || 0)),
+    } = {}) {
+        const get = (r, col) => (typeof col === 'number' ? r[col] : r[col]);
+
+        // calcula valor a partir de índice/nome, expressão "+/-" ou função
+        const computeValue = (r, spec) => {
+            if (typeof spec === 'function') return spec(r, get, toNumber);
+
+            if (typeof spec === 'string' && /[+\-]/.test(spec)) {
+                const expr = spec.replace(/\s+/g, '');
+                const terms = expr.match(/([+\-]?)[^+\-]+/g) || [];
+                let acc = 0;
+
+                for (let t of terms) {
+                    let sign = 1;
+                    if (t[0] === '+') t = t.slice(1);
+                    else if (t[0] === '-') { sign = -1; t = t.slice(1); }
+
+                    let v;
+                    if (/^\d+$/.test(t)) {                  // "5" -> coluna índice 5
+                        v = toNumber(get(r, Number(t)));
+                    } else if (/^\d+\.\d+$/.test(t)) {      // "1.5" -> literal 1.5
+                        v = parseFloat(t);
+                    } else {                                // "Recebido" -> nome da coluna
+                        v = toNumber(get(r, t));
+                    }
+                    acc += sign * v;
+                }
+                return acc;
+            }
+
+            // caso simples: índice ou nome
+            return toNumber(get(r, spec));
+        };
+
+        // 1) agrega por key -> group
+        const acc = {};
+        for (const r of rows) {
+            const keyRaw = get(r, keyCol); if (keyRaw == null) continue;
+            const groupRaw = get(r, groupCol); if (groupRaw == null || groupRaw === '') continue;
+
+            let val = computeValue(r, valueCol);
+            if (valueClampMin != null && val < valueClampMin) val = valueClampMin; // opcional
+
+            const key = keyTransform(String(keyRaw)).trim();
+            if (!key) continue;
+            const group = groupTransform(String(groupRaw));
+
+            (acc[key] ??= {});
+            acc[key][group] = (acc[key][group] || 0) + val;
+        }
+
+        // 2) aplica topN / minPct por key (opcional)
+        if (topN > 0 || minPct > 0) {
+            for (const k of Object.keys(acc)) {
+                const pairs = Object.entries(acc[k]);
+                const total = pairs.reduce((s, [, v]) => s + v, 0) || 1;
+
+                let kept = pairs
+                    .sort((a, b) => b[1] - a[1])
+                    .filter(([, v], i) => (topN ? i < topN : true))
+                    .filter(([, v]) => (minPct ? (v / total * 100) >= minPct : true));
+
+                const keptSet = new Set(kept.map(([g]) => g));
+                const outrosSum = pairs
+                    .filter(([g]) => !keptSet.has(g))
+                    .reduce((s, [, v]) => s + v, 0);
+
+                const obj = Object.fromEntries(kept);
+                if (outrosSum > 0) obj['Outros'] = (obj['Outros'] || 0) + outrosSum;
+                acc[k] = obj;
+            }
+        }
+
+        return acc; // { '2025-01': { 'Fase X': 123, ... }, ... }
+    }
 
     /**
      * Soma colunas pelo nome (baseado no cabeçalho na primeira linha).

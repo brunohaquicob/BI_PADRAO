@@ -201,6 +201,10 @@
 
 @once
     @push('css')
+        <style>
+            
+
+        </style>
     @endpush
     @push('js')
         <script src="https://code.highcharts.com/modules/sankey.js"></script>
@@ -376,10 +380,9 @@
                 //MOntar Grafico 1
                 criarGraficosRowKey(ar_fase_valor, 'card_1', 'Desempenho por Fase', 'Aberto/Em Negociação/Recebidos');
                 //MOntar Grafico 2
-                criarGraficosRowKey(ar_data_valor, 'card_2', 'Desempenho por Data', 'Aberto/Em Negociação/Recebidos');
-
-
-                criarGraficoChartsFlexible(contratos_data, 'card_3', 'Desempenho Contratos Por Implantação', '(Contratos que contém parcelas Recebidas vs parcelas em Aberto)', 0);
+                graficoPorImplantacao(ar_data_valor, 'card_2', 'Desempenho Por Implantação', '(Em aberto/Em Acordo/Recuperado)', 2, 'column', rows);
+                //MOntar Grafico 3
+                graficoPorContratos(contratos_data, 'card_3', 'Desempenho Contratos Por Implantação', '(Contratos que contém parcelas Recebidas vs parcelas em Aberto)', 0, 'areaspline', rows);
                 //FUNIL
                 CriarGraficos.createHighchartsFunnel({
                     containerId: 'card_3_1',
@@ -415,48 +418,154 @@
 
             }
 
-            function criarGraficoChartsFlexible(ar_dados, id, title, subtitle = 'Aberto/Recebidos', decimal = 2) {
+            function graficoPorImplantacao(ar_dados, id, title, subtitle = 'Aberto/Recebidos', decimal = 2, tipo_grafico = 'areaspline', rows) {
+            
                 // 1. Pegar as chaves e ordenar (ano-mês)
                 let keys = Object.keys(ar_dados).sort();
+                let key_ajust = keys.map(s => s.includes('->') ? s.split('->')[1].trim() : s);
                 // 2. Criar arrays separados
+                let arrA = keys.map(k => ar_dados[k].A);
+                let arrI = keys.map(k => ar_dados[k].I);
+                let arrN = keys.map(k => ar_dados[k].N);
+                let arrR = keys.map(k => ar_dados[k].R);
+
+                const tooltipExtraKey = Utilitarios.pieBreakdownBy(rows, {
+                    keyCol: 1, // DATA_IMPLANTACAO
+                    groupCol: 2, // FASE
+                    valueCol: 11, // valor recebido
+                    keyTransform: k => (k.includes('->') ? k.split('->')[1].trim() : k), // pra casar com key_ajust
+                    groupTransform: g => (String(g).includes('->') ? String(g).split('->')[1].trim() : g),
+                    // Opcional:
+                    topN: 6, // mantém só 8 maiores por key
+                    // minPct: 3  // agrupa <3% em "Outros",
+                    toNumber: Utilitarios.parsePtNumber
+                });
+
+                const series_ar = [{
+                        name: 'Em Aberto',
+                        type: tipo_grafico,
+                        data: arrA,
+                        prefix: '',
+                        decimals: decimal
+                    },
+                    {
+                        name: 'Em Acordo',
+                        type: tipo_grafico,
+                        data: arrN,
+                        prefix: '',
+                        decimals: decimal
+                    },
+                    {
+                        name: 'Recebido',
+                        type: tipo_grafico,
+                        data: arrR,
+                        prefix: '',
+                        decimals: decimal
+                    }
+                ];
+
+                const chart = new HighchartsFlexible2({
+                    container: id,
+                    title: title,
+                    subtitle: subtitle,
+                    tooltip: {
+                        decimals: decimal
+                    },
+                    tooltipExtraKey: tooltipExtraKey,
+                    tooltipMiniPie: {
+                        title: 'TOP 6 Fases Recuperado',
+                        width: 400,
+                        height: 260,
+                        labelDistance: 12,
+                        valueFontSize: '10px',
+                        valueDecimals: decimal,
+                        percentDecimals: 2
+                    },
+                    //seriesPerc: ['Implantadas'],
+                    colors: null,
+                    xAxis: {
+                        type: 'category',
+                        categories: key_ajust
+                    },
+                    yAxis: {
+                        title: '',
+                        min: 0
+                    },
+                    series: series_ar
+                }).build();
+            }
+
+            function graficoPorContratos(ar_dados, id, title, subtitle = 'Aberto/Recebidos', decimal = 2, tipo_grafico = 'areaspline', rows) {
+
+                let keys = Object.keys(ar_dados).sort();
+                let key_ajust = keys.map(s => s.includes('->') ? s.split('->')[1].trim() : s);
+            
                 let implantado = keys.map(k => ar_dados[k].C);
                 let aberto = keys.map(k => ar_dados[k].CA);
                 let recebido = keys.map(k => ar_dados[k].C - ar_dados[k].CA);
 
-                const chart = new HighchartsFlexible({
+                const tooltipExtraKey = Utilitarios.pieBreakdownBy(rows, {
+                    keyCol: 1, // DATA_IMPLANTACAO
+                    groupCol: 2, // FASE
+                    valueCol: '5-6', // CONTRATOS ABERTOS
+                    keyTransform: k => (k.includes('->') ? k.split('->')[1].trim() : k), // pra casar com key_ajust
+                    groupTransform: g => (String(g).includes('->') ? String(g).split('->')[1].trim() : g),
+                    // Opcional:
+                    topN: 6, // mantém só 8 maiores por key
+                    // minPct: 3  // agrupa <3% em "Outros"
+                });
+
+                const series_ar = [{
+                        name: 'Em Aberto',
+                        type: tipo_grafico,
+                        data: aberto,
+                        prefix: '',
+                        decimals: decimal
+                    },
+                    {
+                        name: 'Recebido',
+                        type: tipo_grafico,
+                        data: recebido,
+                        prefix: '',
+                        decimals: decimal
+                    }
+                ];
+
+                const chart = new HighchartsFlexible2({
                     container: id,
                     title: title,
                     subtitle: subtitle,
-                    colors: null, //['#6CF', '#39F', '#06C', '#036', '#000'],
+                    tooltip: {
+                        decimals: decimal
+                    },
+                    tooltipExtraKey: tooltipExtraKey,
+                    tooltipMiniPie: {
+                        title: 'TOP 6 Fases Recuperado',
+                        width: 380,
+                        height: 260,
+                        labelDistance: 16,
+                        valueFontSize: '10px',
+                        valueDecimals: decimal,
+                        percentDecimals: 2
+                    },
+                    //seriesPerc: ['Implantadas'],
+                    colors: null,
                     xAxis: {
                         type: 'category',
-                        categories: keys
+                        categories: key_ajust
                     },
                     yAxis: {
-                        title: '(R$)',
+                        title: '',
                         min: 0
                     },
-                    series: [{
-                            name: 'Em Aberto',
-                            type: 'areaspline',
-                            data: aberto,
-                            prefix: '',
-                            decimals: decimal
-                        },
-                        {
-                            name: 'Recebido',
-                            type: 'areaspline',
-                            data: recebido,
-                            prefix: '',
-                            decimals: decimal
-                        }
-                    ]
+                    series: series_ar
                 }).build();
             }
 
             function criarGraficosRowKey(ar_dados, id, title, subtitle = 'Aberto/Em Negociação/Recebidos') {
                 // 1. Pegar as chaves e ordenar (ano-mês)
                 let keys = Object.keys(ar_dados).sort();
+                let key_ajust = keys.map(s => s.includes('->') ? s.split('->')[1].trim() : s);
                 // 2. Criar arrays separados
                 let arrA = keys.map(k => ar_dados[k].A);
                 let arrI = keys.map(k => ar_dados[k].I);
@@ -467,7 +576,7 @@
                     containerId: id, // ID da div onde o gráfico será renderizado
                     title: title,
                     subtitle: subtitle,
-                    xAxisCategories: keys,
+                    xAxisCategories: key_ajust,
                     seriesData: [{
                             name: 'Sem Acordo',
                             type: 'column',
