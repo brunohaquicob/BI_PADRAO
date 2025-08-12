@@ -504,7 +504,7 @@
                     keyTransform: k => (k.includes('->') ? k.split('->')[1].trim() : k),
                     groupTransform: g => (String(g).includes('->') ? String(g).split('->')[1].trim() : g),
                     minPct: 0,
-                    rankBy: 'valor_implantado',
+                    //rankBy: 'valor_implantado',
                     toNumber: Utilitarios.parsePtNumber,
 
                     // derivados entram no final, na ordem listada aqui
@@ -594,10 +594,7 @@
                         min: 0
                     },
                     series: series_ar,
-                    tooltip: {
-                        decimals: 2,
-                        mode: 'click'
-                    }, // << apenas por clique
+                    tooltip: { mode: 'click', decimals: 2, hoverSummary: true }, 
                     card: {
                         position: 'center',
                         offset: {
@@ -753,6 +750,7 @@
                     },
                     tooltipExtraKey: tooltipExtraKey,
                     tooltipMiniPie: {
+                        show: true,
                         title: 'FASES COM MELHOR RECUPERAÇÃO',
                         width: 500,
                         height: 280,

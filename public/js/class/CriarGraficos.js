@@ -1451,6 +1451,8 @@ class HighchartsFlexible3 {
 
     build() {
         const mode = this.options.tooltip?.mode || 'click';
+        const showHoverSummary = !!this.options.tooltip?.hoverSummary;
+
         const cfg = {
             chart: { type: this.options.chartType },
             title: { text: this.options.title },
@@ -1458,13 +1460,16 @@ class HighchartsFlexible3 {
             ...(this.options.colors ? { colors: this.options.colors } : {}),
             xAxis: this._buildXAxis(),
             yAxis: this.options.yAxis,
-            tooltip: (mode === 'hover-native') ? this._buildHighchartsTooltip()
-                : { enabled: false },
+            tooltip: showHoverSummary
+                ? this._buildTooltipHover()                 // <-- resumo no hover
+                : (mode === 'hover-native'
+                    ? this._buildHighchartsTooltip()
+                    : { enabled: false }),
             plotOptions: (mode === 'click')
                 ? this._plotOptionsWithClick(this.options.plotOptions)
-                : (mode === 'hover') // hover overlay
+                : (mode === 'hover'
                     ? this._plotOptionsWithHoverOverlay(this.options.plotOptions)
-                    : (this.options.plotOptions || {}),
+                    : (this.options.plotOptions || {})),
             series: this._prepareSeries()
         };
 
@@ -1475,7 +1480,141 @@ class HighchartsFlexible3 {
         if (!target) { console.error('HighchartsFlexible3: container não encontrado'); return null; }
 
         this.chart = Highcharts.chart(target, cfg);
+
+        // limpar mini-pie ao esconder o tooltip (evita erro #13 / vazamentos)
+        if (showHoverSummary) {
+            Highcharts.addEvent(this.chart.tooltip, 'hide', () => {
+                if (this._miniPieChart) { try { this._miniPieChart.destroy(); } catch (_) { } }
+                this._miniPieChart = null;
+                this._miniPieKey = null;
+            });
+        }
+
         return this.chart;
+    }
+    _buildTooltipHover() {
+        const seriesMeta = this.options.series || [];
+        const xType = this.options?.xAxis?.type ?? 'category';
+        const seriesPerc = this.options.seriesPerc || [];
+        const defaultDecimals = this.options?.tooltip?.decimals ?? 2;
+
+        const pieOpts = Object.assign({
+            show: true, title: null, width: 210, height: 140, cardMinWidth: 340,
+            dataLabelsDecimals: 0, legend: false, nameMaxChars: 6,
+            outsideDistance: 12, insideDistance: -34, valueDecimals: 0, percentDecimals: 2,
+            valueFontSize: '10px'
+        }, this.options.tooltipMiniPie || {});
+
+        const extraByKey = this.options.tooltipExtraKey || null;
+        const self = this;
+
+        const norm = s => String(s ?? '')
+            .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+            .replace(/\s+/g, ' ').trim().toLowerCase();
+
+        const getExtraForKey = (k) => {
+            if (!extraByKey) return null;
+            if (!self._extraNormMap) {
+                self._extraNormMap = {};
+                Object.keys(extraByKey).forEach(key => { self._extraNormMap[norm(key)] = extraByKey[key]; });
+            }
+            return extraByKey[k] || extraByKey[String(k)] || self._extraNormMap[norm(k)] || null;
+        };
+
+        const fmtNumber = (v, dec) => new Intl.NumberFormat('pt-BR', {
+            minimumFractionDigits: dec ?? 0, maximumFractionDigits: dec ?? 0
+        }).format(+v || 0);
+
+        return {
+            shared: true,
+            useHTML: true,
+            borderWidth: 0,
+            outside: true,
+            formatter: function () {
+                const rawKey = (xType === 'datetime') ? this.x : this.key;
+                let keyLabel = this.key;
+                if (xType === 'datetime') keyLabel = Highcharts.dateFormat('%e. %b %Y', this.x);
+
+                let totalGeral = 0, totalBase = 0;
+                const pontos = [];
+                this.points.forEach(p => {
+                    totalGeral += (p.y || 0);
+                    const isBase = seriesPerc.includes(p.series.name);
+                    if (!isBase) totalBase += (p.y || 0);
+                    pontos.push({ ...p, isBase });
+                });
+
+                // extras para mini-pie
+                const dataObjResolved = getExtraForKey(rawKey) || getExtraForKey(keyLabel);
+                const entries = Object.entries(dataObjResolved || {});
+                const totalPie = entries.reduce((s, [, v]) => s + (+v || 0), 0);
+                const hasExtra = pieOpts.show && entries.length && totalPie > 0;
+
+                const pieId = `hc-mini-pie-${self._uid}-${self._slug(rawKey)}`;
+
+                // header + lista
+                let html = `
+                <div class="card shadow-sm small" style="min-width:${pieOpts.cardMinWidth}px;margin:0;">
+                <div class="card-header py-1 text-center font-weight-bold">${keyLabel}</div>
+                <ul class="list-group list-group-flush">`;
+
+                pontos.forEach(point => {
+                    const serie = seriesMeta.find(s => s.name === point.series.name) || {};
+                    const dec = serie.decimals ?? defaultDecimals;
+                    const valueStr = fmtNumber(point.y, dec);
+                    const suffix = serie.suffix || '';
+                    const prefix = serie.prefix || '';
+
+                    let percStr = '';
+                    if (!point.isBase && totalBase) {
+                        const perc = (point.y / totalBase * 100);
+                        percStr = `<small class="text-muted">(${Highcharts.numberFormat(perc, 2)}%)</small>`;
+                    }
+
+                    html += `
+                    <li class="list-group-item d-flex justify-content-between align-items-center py-1">
+                        <span><span style="color:${point.color}">●</span> ${point.series.name}</span>
+                        <span><b>${prefix}${valueStr}${suffix}</b> ${percStr}</span>
+                    </li>`;
+                });
+
+                if (!seriesPerc?.length) {
+                    const totalStr = fmtNumber(totalGeral, defaultDecimals);
+                    html += `<li class="list-group-item text-right"><b>Total:</b> ${totalStr}</li>`;
+                }
+
+                // mini-pie
+                if (hasExtra) {
+                    const titleHtml = pieOpts.title ? `<div class="small text-muted mb-1 text-center">${pieOpts.title}</div>` : '';
+                    html += `
+                    <li class="list-group-item">
+                        ${titleHtml}
+                        <div id="${pieId}" style="width:${pieOpts.width}px;height:${pieOpts.height}px;margin:0 auto;"></div>
+                    </li>`;
+                }
+
+                html += `</ul></div>`;
+
+                // render mini-pie async (com retry)
+                if (hasExtra) {
+                    const data = entries.map(([name, val]) => ({ name, y: Number(val) || 0 }));
+                    const cacheKey = `${self.options.container}|${rawKey}`;
+                    const renderPie = (tries = 15) => {
+                        const el = document.getElementById(pieId);
+                        if (!el) { if (tries > 0) return setTimeout(() => renderPie(tries - 1), 16); return; }
+                        if (self._miniPieChart && self._miniPieKey !== cacheKey) {
+                            try { self._miniPieChart.destroy(); } catch (_) { }
+                            self._miniPieChart = null;
+                        }
+                        self._miniPieChart = self._createMiniPie(pieId, data, pieOpts);
+                        self._miniPieKey = cacheKey;
+                    };
+                    renderPie();
+                }
+
+                return html;
+            }
+        };
     }
 
     _plotOptionsWithHoverOverlay(base = {}) {
