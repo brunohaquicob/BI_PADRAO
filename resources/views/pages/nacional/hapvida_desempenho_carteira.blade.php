@@ -272,13 +272,15 @@
                 }
 
                 //const ar_total          = Utilitarios.sumColumnsFormula(rows, ar_valores);
-                const ar_total          = Utilitarios.sumColumns(rows, ar_valores);
-                const ar_implantacao    = Utilitarios.sumColumns(rows, ar_valores, 0);
-                const ar_cancelado      = Utilitarios.sumColumns(rows, ar_valores, 1);
-                const ar_frente         = Utilitarios.sumColumns(rows, ar_valores, 2);
-                const ar_operadora      = Utilitarios.sumColumns(rows, ar_valores, 4);
-                const ar_porte          = Utilitarios.sumColumns(rows, ar_valores, 5);
-                const ar_fase           = Utilitarios.sumColumns(rows, ar_valores, 6);
+                const ar_total = Utilitarios.sumColumns(rows, ar_valores);
+                const ar_implantacao = Utilitarios.sumColumns(rows, ar_valores, 0);
+                const ar_cancelado = Utilitarios.sumColumns(rows, ar_valores, 1);
+                const ar_frente = Utilitarios.sumColumns(rows, ar_valores, 2);
+                const ar_operadora = Utilitarios.sumColumns(rows, ar_valores, 4);
+                const ar_porte = Utilitarios.sumColumns(rows, ar_valores, 5);
+                const ar_fase = Utilitarios.sumColumns(rows, ar_valores, 6);
+
+                
 
                 //ATUALIZAR CARDS
                 const time_animacao = 1500;
@@ -327,16 +329,16 @@
                 });
 
 
-                criarGraficoChartsFlexible(ar_implantacao, 'card_1_1', 'Desempenho Implantação', 'Vidas',   0, 'column', rows, 0);
-                criarGraficoChartsFlexible(ar_porte, 'card_2', 'Desempenho Porte', 'Vidas',                 0, 'column', rows, 5);
-                criarGraficoChartsFlexible(ar_operadora, 'card_2_1', 'Desempenho Operadora', 'Vidas',       0, 'column', rows, 4);
-                criarGraficoChartsFlexible(ar_frente, 'card_3', 'Desempenho Frente', 'Vidas',               0, 'column', rows, 2);
-                criarGraficoChartsFlexible(ar_cancelado, 'card_3_1', 'Desempenho Cancelados', 'Vidas',      0, 'column', rows, 1);
-                criarGraficoChartsFlexible2(ar_fase, 'card_4', 'Desempenho por Fase', 'Vidas',              0, 'column');
+                criarGraficoChartsFlexible(ar_implantacao, 'card_1_1', 'Desempenho Implantação', 'Vidas', 0, 'column', rows, 0);
+                criarGraficoChartsFlexible(ar_porte, 'card_2', 'Desempenho Porte', 'Vidas', 0, 'column', rows, 5);
+                criarGraficoChartsFlexible(ar_operadora, 'card_2_1', 'Desempenho Operadora', 'Vidas', 0, 'column', rows, 4);
+                criarGraficoChartsFlexible(ar_frente, 'card_3', 'Desempenho Frente', 'Vidas', 0, 'column', rows, 2);
+                criarGraficoChartsFlexible(ar_cancelado, 'card_3_1', 'Desempenho Cancelados', 'Vidas', 0, 'column', rows, 1);
+                criarGraficoChartsFlexible2(ar_fase, 'card_4', 'Desempenho por Fase', 'Vidas', 0, 'column');
 
             }
 
-            
+
             function criarGraficoChartsFlexible(ar_dados, id, title, subtitle = 'Aberto/Recebidos', decimal = 2, tipo_grafico = 'areaspline', rows, key_coluna = 1) {
 
                 // 1. Pegar as chaves e ordenar (ano-mês)

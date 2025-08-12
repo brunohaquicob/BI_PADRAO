@@ -413,6 +413,172 @@ class Utilitarios {
         return acc; // { '2025-01': { 'Fase X': 123, ... }, ... }
     }
 
+    static pieBreakdownByMulti(rows, {
+        keyCol,
+        groupCol,
+        valueCols,                  // [{ name, spec }, ...]
+        keyTransform = k => k,
+        groupTransform = g => g,
+        topN = 0,
+        minPct = 0,
+        rankBy = null,
+        valueClampMin = null,       // number | { [name]: min }
+        toNumber = v => (typeof v === 'number'
+            ? v
+            : (Number(String(v).replace(/\./g, '').replace(',', '.')) || 0)),
+
+        // novos
+        derived = [],               // [{ name, fn:(sums, key, group)=>valor }]
+        columnsOrder = null,        // ['colA','colB',...], se não passar segue ordem de valueCols e depois derived
+        returnAs = 'object',
+    } = {}) {
+        const get = (r, col) => (typeof col === 'number' ? r[col] : r[col]);
+
+        const computeValue = (r, spec) => {
+            if (typeof spec === 'function') return spec(r, get, toNumber);
+            if (typeof spec === 'string' && /[+\-]/.test(spec)) {
+                const expr = spec.replace(/\s+/g, '');
+                const terms = expr.match(/([+\-]?)[^+\-]+/g) || [];
+                let acc = 0;
+                for (let t of terms) {
+                    let sign = 1;
+                    if (t[0] === '+') t = t.slice(1);
+                    else if (t[0] === '-') { sign = -1; t = t.slice(1); }
+                    let v;
+                    if (/^\d+$/.test(t)) v = toNumber(get(r, Number(t)));
+                    else if (/^\d+\.\d+$/.test(t)) v = parseFloat(t);
+                    else v = toNumber(get(r, t));
+                    acc += sign * v;
+                }
+                return acc;
+            }
+            return toNumber(get(r, spec));
+        };
+
+        const clampMinFor = (name) => {
+            if (valueClampMin == null) return null;
+            if (typeof valueClampMin === 'number') return valueClampMin;
+            if (typeof valueClampMin === 'object' && valueClampMin[name] != null) return valueClampMin[name];
+            return null;
+        };
+
+        // 1) agrega: key -> group -> { métricas... }
+        const acc = {};
+        for (const r of rows) {
+            const keyRaw = get(r, keyCol); if (keyRaw == null) continue;
+            const groupRaw = get(r, groupCol); if (groupRaw == null || groupRaw === '') continue;
+
+            const key = keyTransform(String(keyRaw)).trim(); if (!key) continue;
+            const group = groupTransform(String(groupRaw));
+
+            (acc[key] ??= {});
+            (acc[key][group] ??= {});
+            for (const vc of valueCols) {
+                const name = vc.name ?? String(vc.spec);
+                let val = computeValue(r, vc.spec);
+                const minClamp = clampMinFor(name);
+                if (minClamp != null && val < minClamp) val = minClamp;
+                acc[key][group][name] = (acc[key][group][name] || 0) + val;
+            }
+        }
+
+        // 2) topN/minPct baseados em rankBy
+        if (topN > 0 || minPct > 0) {
+            let rankFn;
+            if (typeof rankBy === 'function') {
+                rankFn = rankBy;
+            } else if (typeof rankBy === 'string') {
+                rankFn = sums => +sums[rankBy] || 0;
+            } else if (typeof rankBy === 'number') {
+                const n = valueCols[rankBy]?.name ?? String(valueCols[rankBy]?.spec);
+                rankFn = sums => +sums[n] || 0;
+            } else {
+                const firstName = valueCols[0]?.name ?? String(valueCols[0]?.spec);
+                rankFn = sums => +sums[firstName] || 0;
+            }
+
+            for (const k of Object.keys(acc)) {
+                const pairs = Object.entries(acc[k]);
+                const totalRank = pairs.reduce((s, [, sums]) => s + rankFn(sums), 0) || 1;
+
+                let kept = pairs
+                    .sort((a, b) => rankFn(b[1]) - rankFn(a[1]))
+                    .filter(([, sums], i) => (topN ? i < topN : true))
+                    .filter(([, sums]) => (minPct ? (rankFn(sums) / totalRank * 100) >= minPct : true));
+
+                const keptSet = new Set(kept.map(([g]) => g));
+                const outros = {};
+                for (const [g, sums] of pairs) {
+                    if (keptSet.has(g)) continue;
+                    for (const [name, v] of Object.entries(sums)) {
+                        outros[name] = (outros[name] || 0) + v;
+                    }
+                }
+                const hasOutros = Object.values(outros).some(v => v > 0);
+
+                const obj = {};
+                for (const [g, sums] of kept) obj[g] = sums;
+                if (hasOutros) obj['Outros'] = outros;
+                acc[k] = obj;
+            }
+        }
+
+        // 3) métricas derivadas
+        if (derived?.length) {
+            for (const k of Object.keys(acc)) {
+                for (const g of Object.keys(acc[k])) {
+                    const sums = acc[k][g];
+                    for (const d of derived) {
+                        try {
+                            sums[d.name] = d.fn(sums, k, g);
+                        } catch {
+                            sums[d.name] = 0;
+                        }
+                    }
+                }
+            }
+        }
+
+        // 4) ordenação final das colunas (métricas) para cada group
+        const baseOrder = valueCols.map(vc => vc.name ?? String(vc.spec));
+        const derivedOrder = (derived || []).map(d => d.name);
+        const finalOrder = (columnsOrder && columnsOrder.length)
+            ? columnsOrder.slice()
+            : baseOrder.concat(derivedOrder);
+
+        for (const k of Object.keys(acc)) {
+            for (const g of Object.keys(acc[k])) {
+                const sums = acc[k][g];
+
+                if (returnAs === 'array') {
+                    // array ordenado p/ tooltip
+                    const arr = [];
+                    for (const name of finalOrder) {
+                        if (name in sums) arr.push({ name, value: sums[name] });
+                    }
+                    // mantém chaves extras no fim (se existirem)
+                    for (const name of Object.keys(sums)) {
+                        if (!finalOrder.includes(name)) arr.push({ name, value: sums[name] });
+                    }
+                    acc[k][g] = arr;
+                } else {
+                    // objeto ordenado por inserção
+                    const ordered = {};
+                    for (const name of finalOrder) {
+                        if (name in sums) ordered[name] = sums[name];
+                    }
+                    for (const name of Object.keys(sums)) {
+                        if (!(name in ordered)) ordered[name] = sums[name];
+                    }
+                    acc[k][g] = ordered;
+                }
+            }
+        }
+
+        return acc;
+    }
+
+
     /**
      * Soma colunas pelo nome (baseado no cabeçalho na primeira linha).
      * Opcionalmente agrupa por uma coluna chave (também pelo nome).

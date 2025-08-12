@@ -202,8 +202,58 @@
 @once
     @push('css')
         <style>
-            
+            /* Header fix: centraliza e não corta, fica sticky no topo do card */
+            .hc-click-card-header {
+                position: sticky;
+                /* fica colado no topo quando rolar */
+                top: 0;
+                z-index: 2;
 
+                display: flex;
+                align-items: center;
+                /* centraliza vertical */
+                justify-content: center;
+                /* centraliza horizontal */
+
+                padding: 10px 44px;
+                /* espaço para o botão fechar dos dois lados */
+                min-height: 40px;
+                line-height: 1.2;
+                border-bottom: 1px solid rgba(0, 0, 0, .06);
+            }
+
+            /* título simples (não precisa mais de position absolute) */
+            .hc-click-card-header .hc-header-title {
+                white-space: nowrap;
+                /* evita quebrar (e “subir”) */
+                font-weight: 600;
+            }
+
+            /* botão fechar à direita, alinhado verticalmente */
+            .hc-click-card-header .btn-close {
+                position: absolute;
+                right: 10px;
+                top: 50%;
+                transform: translateY(-50%);
+                opacity: .9;
+            }
+
+            .hc-click-card-header .btn-close:hover {
+                opacity: 1;
+            }
+
+            .btn-close {
+                background: transparent;
+                border: 0;
+                width: 1.25rem;
+                height: 1.25rem;
+            }
+
+            .btn-close::before {
+                content: "×";
+                font-size: 20px;
+                line-height: 1;
+            }
         </style>
     @endpush
     @push('js')
@@ -418,8 +468,76 @@
 
             }
 
+            function calculaArrayTable(rows, keyCol = 1, groupCol = 2) {
+                const tooltipExtraKey = Utilitarios.pieBreakdownByMulti(rows, {
+                    keyCol: 1,
+                    groupCol: 2,
+                    valueCols: [{
+                            name: 'devedor_implantado',
+                            spec: 3
+                        },
+                        {
+                            name: 'contrato_implantado',
+                            spec: 4
+                        },
+                        {
+                            name: 'valor_implantado',
+                            spec: 9
+                        },
+                        {
+                            name: 'valor_aberto',
+                            spec: 10
+                        },
+                        {
+                            name: 'valor_recuperado',
+                            spec: 11
+                        },
+                        {
+                            name: 'valor_em_acordo',
+                            spec: 13
+                        },
+                        {
+                            name: 'valor_sem_acordo',
+                            spec: 14
+                        },
+                    ],
+                    keyTransform: k => (k.includes('->') ? k.split('->')[1].trim() : k),
+                    groupTransform: g => (String(g).includes('->') ? String(g).split('->')[1].trim() : g),
+                    minPct: 0,
+                    rankBy: 'valor_implantado',
+                    toNumber: Utilitarios.parsePtNumber,
+
+                    // derivados entram no final, na ordem listada aqui
+                    derived: [{
+                            name: 'ticket_medio',
+                            fn: (s) => (s.contrato_implantado > 0 ? (s.valor_implantado / s.contrato_implantado) : 0)
+                        }, {
+                            name: 'pct_recuperado',
+                            fn: (s) => (s.valor_implantado > 0 ? (s.valor_recuperado / s.valor_implantado) * 100 : 0)
+                        },
+                        {
+                            name: 'pct_aberto',
+                            fn: (s) => (s.valor_implantado > 0 ? (s.valor_aberto / s.valor_implantado) * 100 : 0)
+                        }
+                    ],
+
+                    columnsOrder: [
+                        'devedor_implantado', 'contrato_implantado',
+                        'valor_implantado',
+                        'ticket_medio',
+                        'valor_aberto', 'pct_aberto',
+                        'valor_recuperado', 'pct_recuperado',
+                        'valor_em_acordo', 'valor_sem_acordo'
+                    ],
+                    returnAs: 'array'
+                });
+                return tooltipExtraKey;
+            }
+
             function graficoPorImplantacao(ar_dados, id, title, subtitle = 'Aberto/Recebidos', decimal = 2, tipo_grafico = 'areaspline', rows) {
-            
+
+                const tooltipExtraKeyTable = calculaArrayTable(rows);
+
                 // 1. Pegar as chaves e ordenar (ano-mês)
                 let keys = Object.keys(ar_dados).sort();
                 let key_ajust = keys.map(s => s.includes('->') ? s.split('->')[1].trim() : s);
@@ -463,26 +581,10 @@
                         decimals: decimal
                     }
                 ];
-
-                const chart = new HighchartsFlexible2({
+                new HighchartsFlexible3({
                     container: id,
-                    title: title,
-                    subtitle: subtitle,
-                    tooltip: {
-                        decimals: decimal
-                    },
-                    tooltipExtraKey: tooltipExtraKey,
-                    tooltipMiniPie: {
-                        title: 'FASES COM MELHOR RECUPERAÇÃO',
-                        width: 400,
-                        height: 260,
-                        labelDistance: 12,
-                        valueFontSize: '10px',
-                        valueDecimals: decimal,
-                        percentDecimals: 2
-                    },
-                    //seriesPerc: ['Implantadas'],
-                    colors: null,
+                    title,
+                    subtitle,
                     xAxis: {
                         type: 'category',
                         categories: key_ajust
@@ -491,15 +593,181 @@
                         title: '',
                         min: 0
                     },
-                    series: series_ar
+                    series: series_ar,
+                    tooltip: {
+                        decimals: 2,
+                        mode: 'click'
+                    }, // << apenas por clique
+                    card: {
+                        position: 'center',
+                        offset: {
+                            y: 8
+                        },
+                        width: '70%',
+                        maxHeight: 800,
+                        className: 'border-primary small',
+                        headerClass: 'bg-primary text-white'
+                    },
+                    tooltipTable: {
+                        enabled: true,
+                        dataByKey: tooltipExtraKeyTable,
+                        groupColumn: {
+                            key: 'group',
+                            label: 'Faixa',
+                            align: 'text-left'
+                        },
+                        resolve: (rawKey, keyLabel, norm) => {
+                            const byMonth =
+                                tooltipExtraKeyTable[rawKey] ||
+                                tooltipExtraKeyTable[keyLabel] ||
+                                tooltipExtraKeyTable[norm(keyLabel)];
+                            if (!byMonth) return [];
+
+                            // cada faixa vira uma linha com colunas nomeadas
+                            return Object.entries(byMonth).map(([faixa, items]) => {
+                                const row = {
+                                    group: faixa
+                                };
+                                (items || [])
+                                .forEach(({
+                                    name,
+                                    value
+                                }) => {
+                                    // usa sua função para normalizar números
+                                    row[name] = (window.Utilitarios?.parsePtNumber) ?
+                                        Utilitarios.parsePtNumber(value) :
+                                        +String(value ?? '').replace(/[^\d.-]/g, '') || 0;
+                                });
+                                return row;
+                            });
+                        },
+                        columns: [{
+                                key: 'devedor_implantado',
+                                label: 'Dev.Imp',
+                                type: 'int',
+                                align: 'text-center',
+                                total: true
+                            },
+                            {
+                                key: 'contrato_implantado',
+                                label: 'Ctr.Imp',
+                                type: 'int',
+                                align: 'text-center',
+                                total: true
+                            },
+                            {
+                                key: 'valor_implantado',
+                                label: 'Implantado',
+                                type: 'currency',
+                                align: 'text-right',
+                                decimals: 2,
+                                total: true
+                            },
+                            {
+                                key: 'ticket_medio',
+                                label: 'Ticket',
+                                type: 'currency',
+                                align: 'text-right',
+                                decimals: 2,
+                                total: true,
+                                formatTotal: (_sum, rows) => {
+                                    const totVal = rows.reduce((s, r) => s + (+r.valor_implantado || 0), 0);
+                                    const totCtr = rows.reduce((s, r) => s + (+r.contrato_implantado || 0), 0);
+                                    const v = totCtr ? (totVal / totCtr) : 0;
+                                    return 'R$ ' + new Intl.NumberFormat('pt-BR', {
+                                        minimumFractionDigits: 2,
+                                        maximumFractionDigits: 2
+                                    }).format(v);
+                                }
+                            },
+                            {
+                                key: 'valor_aberto',
+                                label: 'Aberto',
+                                type: 'currency',
+                                align: 'text-right',
+                                decimals: 2,
+                                total: true
+                            },
+                            {
+                                key: 'pct_aberto',
+                                label: '% Aberto',
+                                type: 'percent',
+                                align: 'text-center',
+                                decimals: 2,
+                                total: true,
+                                formatTotal: (_sum, rows) => {
+                                    const totAberto = rows.reduce((s, r) => s + (+r.valor_aberto || 0), 0);
+                                    const totImpl = rows.reduce((s, r) => s + (+r.valor_implantado || 0), 0);
+                                    const p = totImpl ? (totAberto / totImpl * 100) : 0;
+                                    return new Intl.NumberFormat('pt-BR', {
+                                        minimumFractionDigits: 2,
+                                        maximumFractionDigits: 2
+                                    }).format(p) + '%';
+                                }
+                            },
+                            {
+                                key: 'valor_recuperado',
+                                label: 'Recuperado',
+                                type: 'currency',
+                                align: 'text-right',
+                                decimals: 2,
+                                total: true
+                            },
+                            {
+                                key: 'pct_recuperado',
+                                label: '% Recup.',
+                                type: 'percent',
+                                align: 'text-center',
+                                decimals: 2,
+                                total: true,
+                                formatTotal: (_sum, rows) => {
+                                    const totRec = rows.reduce((s, r) => s + (+r.valor_recuperado || 0), 0);
+                                    const totImpl = rows.reduce((s, r) => s + (+r.valor_implantado || 0), 0);
+                                    const p = totImpl ? (totRec / totImpl * 100) : 0;
+                                    return new Intl.NumberFormat('pt-BR', {
+                                        minimumFractionDigits: 2,
+                                        maximumFractionDigits: 2
+                                    }).format(p) + '%';
+                                }
+                            },
+                            {
+                                key: 'valor_em_acordo',
+                                label: 'Em Acordo',
+                                type: 'currency',
+                                align: 'text-right',
+                                decimals: 2,
+                                total: true
+                            },
+                        ],
+                        table: {
+                            width: 900,
+                            maxHeight: 500,
+                            showTotalsRow: true,
+                            striped: false,
+                            compact: true,
+                            useFooterCallback: true,
+                            dataTable: {
+                                enabled: true
+                            }
+                        }
+                    },
+                    tooltipExtraKey: tooltipExtraKey,
+                    tooltipMiniPie: {
+                        title: 'FASES COM MELHOR RECUPERAÇÃO',
+                        width: 500,
+                        height: 280,
+                        valueDecimals: 2,
+                        percentDecimals: 2
+                    }
                 }).build();
+
             }
 
             function graficoPorContratos(ar_dados, id, title, subtitle = 'Aberto/Recebidos', decimal = 2, tipo_grafico = 'areaspline', rows) {
 
                 let keys = Object.keys(ar_dados).sort();
                 let key_ajust = keys.map(s => s.includes('->') ? s.split('->')[1].trim() : s);
-            
+
                 let implantado = keys.map(k => ar_dados[k].C);
                 let aberto = keys.map(k => ar_dados[k].CA);
                 let recebido = keys.map(k => ar_dados[k].C - ar_dados[k].CA);

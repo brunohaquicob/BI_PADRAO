@@ -1385,6 +1385,587 @@ class HighchartsFlexible2 {
     }
 }
 
+class HighchartsFlexible3 {
+    constructor(options) {
+        this.options = Object.assign({
+            container: 'container',
+            chartType: 'spline',
+            title: '',
+            subtitle: '',
+            seriesPerc: null,
+            colors: null,
+
+            xAxis: { type: 'category', title: '', dateTimeLabelFormats: { month: '%e. %b', year: '%b' }, categories: null },
+            yAxis: { title: '', min: 0 },
+
+            tooltip: { decimals: 2, mode: 'click' }, // abre por clique
+
+            // Aparência do card
+            card: {
+                width: '70%',
+                maxHeight: 600,
+                className: 'border-primary',
+                headerClass: 'bg-primary text-white',
+                bodyPadding: '12px',
+                position: 'top',              // 'top' | 'center' | 'bottom' | 'topright' | ... | 'pointer'
+                offset: { x: 0, y: 8 }        // ajuste fino
+            },
+
+            tooltipExtraKey: null,  // mini-pie
+            tooltipMiniPie: {
+                show: true, title: null, width: 400, height: 260, cardMinWidth: 340,
+                labelDistance: 12, valueFontSize: '10px', valueDecimals: 0, percentDecimals: 2,
+                legend: false, nameMaxChars: 6, outsideDistance: 12, insideDistance: -34
+            },
+
+            // Tabela no card
+            tooltipTable: {
+                enabled: false,
+                dataByKey: null,
+                resolve: null,
+                groupColumn: { key: 'group', label: 'Grupo', align: 'text-left' },
+                columns: [],
+                table: {
+                    width: 900,
+                    striped: true,
+                    compact: true,
+                    showTotalsRow: true,
+                    maxHeight: 420,
+                    useFooterCallback: true, // calcula totais no footer via DataTables
+                    dataTable: {
+                        enabled: true,
+                        options: { dom: 't', autoWidth: false, scrollX: true, paging: false, searching: false, info: false, ordering: false }
+                    }
+                }
+            },
+
+            plotOptions: {
+                series: { marker: { symbol: 'circle', fillColor: 'var(--highcharts-background-color,#fff)', enabled: true, radius: 2.5, lineWidth: 1, lineColor: null } }
+            },
+
+            series: []
+        }, options);
+
+        this._uid = Math.random().toString(36).slice(2);
+    }
+
+    build() {
+        const mode = this.options.tooltip?.mode || 'click';
+        const cfg = {
+            chart: { type: this.options.chartType },
+            title: { text: this.options.title },
+            subtitle: { text: this.options.subtitle },
+            ...(this.options.colors ? { colors: this.options.colors } : {}),
+            xAxis: this._buildXAxis(),
+            yAxis: this.options.yAxis,
+            tooltip: (mode === 'hover-native') ? this._buildHighchartsTooltip()
+                : { enabled: false },
+            plotOptions: (mode === 'click')
+                ? this._plotOptionsWithClick(this.options.plotOptions)
+                : (mode === 'hover') // hover overlay
+                    ? this._plotOptionsWithHoverOverlay(this.options.plotOptions)
+                    : (this.options.plotOptions || {}),
+            series: this._prepareSeries()
+        };
+
+        const target = (typeof this.options.container === 'string')
+            ? document.getElementById(this.options.container.replace(/^#/, ''))
+            : this.options.container;
+
+        if (!target) { console.error('HighchartsFlexible3: container não encontrado'); return null; }
+
+        this.chart = Highcharts.chart(target, cfg);
+        return this.chart;
+    }
+
+    _plotOptionsWithHoverOverlay(base = {}) {
+        const self = this;
+        let lastX = null;
+        let timer = null;
+
+        return Highcharts.merge(base, {
+            series: {
+                point: {
+                    events: {
+                        mouseOver(e) {
+                            const chart = this.series.chart;
+                            const x = this.x;
+                            if (x === lastX) return;      // evita refazer no mesmo ponto
+                            lastX = x;
+
+                            clearTimeout(timer);
+                            timer = setTimeout(() => {
+                                const points = chart.series
+                                    .filter(s => s.visible !== false)
+                                    .map(s => (s.points || []).find(p => p && p.x === x))
+                                    .filter(Boolean);
+
+                                const key = this.category ?? this.x;
+                                const html = self._buildCardHTML(this.x, key, points);
+                                // ancora sempre no TOPO-CENTRO do gráfico
+                                self._openOverlayFixed(chart, html);
+                            }, 80); // pequeno debounce
+                        },
+                        mouseOut() {
+                            // opcional: não fechar imediatamente; pode deixar fechar ao clicar fora
+                            // self._closeOverlay?.();
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    _openOverlayFixed(chart, html) {
+        // fecha anterior
+        this._closeOverlay?.();
+
+        const overlay = document.createElement('div');
+        overlay.style.cssText = 'position:fixed; inset:0; z-index:9999; background:rgba(0,0,0,0);';
+
+        const wrap = document.createElement('div');
+        wrap.innerHTML = html;
+        const cardEl = wrap.firstElementChild;
+
+        // mesmas regras de estilo do click
+        cardEl.style.position = 'fixed';
+        cardEl.style.zIndex = '10000';
+        cardEl.style.width = this.options.card?.width || '70%';
+        cardEl.style.maxHeight = (this.options.card?.maxHeight ?? 500) + 'px';
+        cardEl.style.maxWidth = '96vw';
+        cardEl.style.overflow = 'auto';
+
+        overlay.appendChild(cardEl);
+        document.body.appendChild(overlay);
+
+        // posiciona no TOPO-CENTRO do gráfico
+        const rect = chart.container.getBoundingClientRect();
+        const w = Math.min(cardEl.offsetWidth || 600, window.innerWidth * 0.96);
+        const h = Math.min(cardEl.offsetHeight || 300, (this.options.card?.maxHeight ?? 500));
+        const left = Math.max(8, rect.left + rect.width / 2 - w / 2);
+        const top = Math.max(8, rect.top + 12);
+
+        cardEl.style.left = `${left}px`;
+        cardEl.style.top = `${top}px`;
+
+        const close = () => { this._destroyDT(); try { overlay.remove(); } catch { } this._closeOverlay = null; };
+        overlay.addEventListener('click', ev => { if (ev.target === overlay) close(); });
+        this._closeOverlay = close;
+    }
+
+
+    _buildHighchartsTooltip() {
+        const self = this;
+        return {
+            shared: true,
+            useHTML: true,
+            borderWidth: 0,
+            outside: true,
+            formatter: function () {
+                const key = (self.options?.xAxis?.type === 'datetime')
+                    ? Highcharts.dateFormat('%e. %b %Y', this.x)
+                    : this.key;
+                return self._buildCardHTML(this.x, key, this.points || [this.point]);
+            }
+        };
+    }
+
+    _plotOptionsWithClick(base = {}) {
+        const self = this;
+        return Highcharts.merge(base, {
+            series: {
+                cursor: 'pointer',
+                point: {
+                    events: {
+                        click(e) {
+                            const chart = this.series.chart;
+                            const x = this.x;
+                            const points = chart.series
+                                .filter(s => s.visible !== false)
+                                .map(s => (s.points || []).find(p => p && p.x === x))
+                                .filter(Boolean);
+
+                            const key = this.category ?? this.x;
+                            const html = self._buildCardHTML(this.x, key, points);
+                            self._openOverlayAtEvent(e, html, chart);
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    _openOverlayAtEvent(e, html, chart) {
+        this._closeOverlay?.(); // fecha anterior
+
+        const overlay = document.createElement('div');
+        overlay.style.cssText = 'position:fixed; inset:0; z-index:9999; background:rgba(0,0,0,0);';
+
+        const wrap = document.createElement('div');
+        wrap.innerHTML = html;
+        const cardEl = wrap.firstElementChild;
+
+        // dimensões/estilo do card
+        const cardOpts = this.options.card || {};
+        cardEl.style.position = 'fixed';
+        cardEl.style.zIndex = '10000';
+        cardEl.style.width = cardOpts.width || '70%';
+        cardEl.style.maxHeight = (cardOpts.maxHeight ?? 500) + 'px';
+        cardEl.style.maxWidth = '96vw';
+        cardEl.style.overflow = 'auto';
+
+        overlay.appendChild(cardEl);
+        document.body.appendChild(overlay);
+        // botão "fechar" no header (quando modo=click)
+        const btnClose = cardEl.querySelector('[data-hcf-close]');
+
+        const place = () => {
+            // mede após estar no DOM
+            const w = Math.min(cardEl.offsetWidth || 600, window.innerWidth * 0.96);
+            const h = Math.min(cardEl.offsetHeight || 300, (cardOpts.maxHeight ?? 500));
+
+            const rect = chart.container.getBoundingClientRect();
+            const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
+            const off = cardOpts.offset || { x: 0, y: 8 };
+
+            let left = 0, top = 0;
+            switch ((cardOpts.position || 'pointer').toLowerCase()) {
+                case 'center':
+                    left = rect.left + (rect.width - w) / 2;
+                    top = rect.top + (rect.height - h) / 2;
+                    break;
+                case 'top':
+                    left = rect.left + (rect.width - w) / 2;
+                    top = rect.top + 8;
+                    break;
+                case 'bottom':
+                    left = rect.left + (rect.width - w) / 2;
+                    top = rect.bottom - h - 8;
+                    break;
+                case 'topright':
+                    left = rect.right - w - 8;
+                    top = rect.top + 8;
+                    break;
+                case 'topleft':
+                    left = rect.left + 8;
+                    top = rect.top + 8;
+                    break;
+                case 'bottomright':
+                    left = rect.right - w - 8;
+                    top = rect.bottom - h - 8;
+                    break;
+                case 'bottomleft':
+                    left = rect.left + 8;
+                    top = rect.bottom - h - 8;
+                    break;
+                case 'pointer':
+                default: {
+                    // comportamento antigo (perto do clique)
+                    const norm = chart.pointer.normalize(e);
+                    const clickX = rect.left + norm.chartX;
+                    const clickY = rect.top + norm.chartY;
+                    left = clickX - w / 2;
+                    top = clickY + 12;
+                    break;
+                }
+            }
+
+            // offset + clamp nas bordas da viewport
+            left = clamp(left + (off.x || 0), 8, window.innerWidth - w - 8);
+            top = clamp(top + (off.y || 0), 8, window.innerHeight - h - 8);
+
+            cardEl.style.left = `${left}px`;
+            cardEl.style.top = `${top}px`;
+        };
+
+        // posiciona agora e também ao redimensionar
+        place();
+        const onResize = () => place();
+        window.addEventListener('resize', onResize);
+
+        const close = () => {
+            this._destroyDT();
+            try { overlay.remove(); } catch (_) { }
+            window.removeEventListener('resize', onResize);
+            this._closeOverlay = null;
+        };
+        if (btnClose) {
+            btnClose.addEventListener('click', (ev) => { ev.stopPropagation(); close(); });
+        }
+        overlay.addEventListener('click', ev => { if (ev.target === overlay) close(); });
+        window.addEventListener('keydown', this._escHandler = (k) => { if (k.key === 'Escape') close(); }, { once: true });
+
+        this._closeOverlay = close;
+    }
+
+
+    _buildXAxis() {
+        const x = this.options.xAxis;
+        const base = { title: { text: x.title || '' } };
+        if (x.type === 'datetime') return { ...base, type: 'datetime', dateTimeLabelFormats: x.dateTimeLabelFormats || { month: '%e. %b', year: '%b' } };
+        if (x.type === 'category') return { ...base, type: 'category', categories: x.categories || [] };
+        return { ...base, type: 'linear' };
+    }
+
+    _prepareSeries() {
+        const xType = this.options.xAxis.type;
+        return this.options.series.map(s => {
+            if (!s.data) s.data = [];
+            if (xType === 'datetime') s.data = s.data.map(([x, y]) => [Date.parse(x), y]);
+            return s;
+        });
+    }
+
+    // ---------- CARD ----------
+    _buildCardHTML(rawKey, keyLabel, points) {
+        const toNum = (window?.Utilitarios?.parsePtNumber) ? Utilitarios.parsePtNumber : (v => +String(v ?? '').replace(/[^\d.-]/g, '') || 0);
+        const seriesMeta = this.options.series || [];
+        const defaultDecimals = this.options?.tooltip?.decimals ?? 2;
+
+        const pieOpts = Object.assign({
+            show: true, title: null, width: 400, height: 260, valueDecimals: 0, percentDecimals: 2, legend: false
+        }, this.options.tooltipMiniPie || {});
+        const tableOpts = Object.assign({
+            enabled: false, dataByKey: null, resolve: null,
+            groupColumn: { key: 'group', label: 'Grupo', align: 'text-left' },
+            columns: [],
+            table: { width: 900, striped: true, compact: true, showTotalsRow: true, maxHeight: 420, useFooterCallback: true, dataTable: { enabled: false, options: {} } }
+        }, this.options.tooltipTable || {});
+        const extraByKey = this.options.tooltipExtraKey || null;
+
+        const norm = s => String(s ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
+        const getExtraForKey = (k) => {
+            if (!extraByKey) return null;
+            if (!this._extraNormMap) { this._extraNormMap = {}; Object.keys(extraByKey).forEach(key => { this._extraNormMap[norm(key)] = extraByKey[key]; }); }
+            return extraByKey[k] || extraByKey[String(k)] || this._extraNormMap[norm(k)] || null;
+        };
+        const fmtNumber = (v, d = 0) => new Intl.NumberFormat('pt-BR', { minimumFractionDigits: d, maximumFractionDigits: d }).format(+v || 0);
+        const fmtValue = (v, c) => {
+            const t = c.type || 'number', d = c.decimals ?? (t === 'int' ? 0 : 2);
+            if (v == null || v === '') return '';
+            if (t === 'currency') return 'R$ ' + fmtNumber(v, d);
+            if (t === 'percent') return fmtNumber(v, d) + '%';
+            if (t === 'int') return fmtNumber(v, 0);
+            if (t === 'number') return fmtNumber(v, d);
+            if (t === 'date') return new Date(v).toLocaleDateString('pt-BR');
+            if (t === 'datetime') return new Date(v).toLocaleString('pt-BR');
+            return String(v);
+        };
+
+        // helpers mapeamento de célula
+        const getRaw = (row, key) => {
+            if (!row) return undefined;
+            let v = row[key];
+            if (v === undefined && key) v = row[key.toLowerCase()];
+            if (v && typeof v === 'object' && 'value' in v) v = v.value;
+            return v;
+        };
+
+        // ----- conteúdo principal -----
+        const wantTable = tableOpts.enabled && tableOpts.dataByKey;
+        let primaryHtml = '';
+        let pieHtml = '';
+
+        if (wantTable) {
+            const resolver = tableOpts.resolve || ((rk, kl, nf) => tableOpts.dataByKey[rk] || tableOpts.dataByKey[kl] || tableOpts.dataByKey[nf(kl)]);
+            const dataRows = resolver(rawKey, keyLabel, norm) || [];
+            const arr = Array.isArray(dataRows) ? dataRows : Object.entries(dataRows).map(([group, vals]) => ({ group, ...(vals || {}) }));
+
+            const tableId = `hc-tip-table-${this._uid}-${this._slug(rawKey)}`;
+            const groupCol = Object.assign({ key: 'group', label: 'Grupo', align: 'text-left' }, tableOpts.groupColumn || {}); groupCol.type = 'string';
+            const cols = [groupCol].concat(tableOpts.columns || []);
+
+            // header
+            const thead = '<tr>' + cols.map(c => `<th class="${c.align || ''}">${c.label || c.key}</th>`).join('') + '</tr>';
+
+            // body
+            let tbody = '';
+            arr.forEach(row => {
+                tbody += '<tr>';
+                cols.forEach(c => {
+                    const raw = getRaw(row, c.key);
+                    const v = (c.type && c.type !== 'string') ? toNum(raw) : raw;
+                    const val = (c.format && typeof c.format === 'function') ? c.format(v, row, c) : fmtValue(v, c);
+                    tbody += `<td class="${c.align || ''}">${val}</td>`;
+                });
+                tbody += '</tr>';
+            });
+
+            // footer (sempre cria se showTotalsRow=true)
+            let tfoot = '';
+            if (tableOpts.table.showTotalsRow) {
+                tfoot = '<tr>' + cols.map((c, idx) => {
+                    if (!tableOpts.table.useFooterCallback) {
+                        if (idx === 0) return `<th class="${c.align || ''}">Total</th>`;
+                        if (!c.total) return `<th class="${c.align || ''}"></th>`;
+                        const sum = arr.reduce((s, r) => s + toNum(getRaw(r, c.key)), 0);
+                        const out = (c.formatTotal && typeof c.formatTotal === 'function') ? c.formatTotal(sum, arr, c) : fmtValue(sum, c);
+                        return `<th class="${c.align || ''}">${out}</th>`;
+                    }
+                    // placeholders (footerCallback preencherá)
+                    return `<th class="${c.align || ''}">${idx === 0 ? 'Total' : ''}</th>`;
+                }).join('') + '</tr>';
+            }
+
+            primaryHtml = `
+            <div style="
+            max-height:${Math.min(tableOpts.table.maxHeight || 420, 460)}px;
+            overflow:auto;
+            scrollbar-gutter: stable both-edges;    /* reserva a calha do scroll quando existir */
+            padding-right: 12px;                    /* fallback cross-browser p/ não cortar à direita */
+            box-sizing: content-box;                /* padding não rouba largura do conteúdo */
+            ">
+            <div style="overflow-x:auto;">
+                <table id="${tableId}" class="table table-sm table-hover table-bordered ${tableOpts.table.striped ? 'table-striped' : ''} ${tableOpts.table.compact ? 'mb-0' : ''}" style="width:100%; white-space:nowrap;"">
+                <thead>${thead}</thead>
+                <tbody>${tbody}</tbody>
+                ${tableOpts.table.showTotalsRow ? `<tfoot>${tfoot}</tfoot>` : ''}
+                </table>
+            </div>
+            </div>`;
+
+            // DataTables (usa os dados crus do arr no footerCallback -> nunca zera)
+            if (tableOpts.table?.dataTable?.enabled) {
+                const userOpts = tableOpts.table.dataTable.options || {};
+                setTimeout(() => {
+                    if (!(window.jQuery && jQuery.fn && jQuery.fn.DataTable)) return;
+                    const $el = jQuery(`#${tableId}`); if (!$el.length || jQuery.fn.DataTable.isDataTable($el[0])) return;
+
+                    const dtOpts = Object.assign({
+                        dom: 't', autoWidth: false, paging: false, searching: false, info: false, ordering: false, scrollX: true, retrieve: true
+                    }, userOpts);
+
+                    if (tableOpts.table.showTotalsRow && tableOpts.table.useFooterCallback) {
+                        const colsSpec = cols.slice();        // fecha sobre as colunas
+                        const dataCopy = arr.map(r => ({ ...r })); // e sobre os dados crus
+                        dtOpts.footerCallback = function () {
+                            const api = this.api();
+                            colsSpec.forEach((c, idx) => {
+                                const cell = api.column(idx).footer();
+                                if (!cell) return;
+                                if (idx === 0) { cell.innerHTML = 'Total'; return; }
+                                if (!c.total) { cell.innerHTML = ''; return; }
+                                const total = dataCopy.reduce((s, r) => s + toNum(getRaw(r, c.key)), 0);
+                                cell.innerHTML = (c.formatTotal && typeof c.formatTotal === 'function') ? c.formatTotal(total, dataCopy, c) : fmtValue(total, c);
+                            });
+                        };
+                    }
+
+                    const dt = $el.DataTable(dtOpts);
+                    setTimeout(() => { try { dt.columns().adjust(); } catch (_) { } }, 0);
+                    this._dtLastId = tableId;
+                }, 0);
+            }
+        } else {
+            // lista simples das séries
+            let totalGeral = 0, totalBase = 0;
+            const seriesPerc = this.options.seriesPerc || [];
+            const pontos = [];
+            points.forEach(p => {
+                totalGeral += (p.y || 0);
+                const isBase = seriesPerc.includes(p.series.name);
+                if (!isBase) totalBase += (p.y || 0);
+                pontos.push({ ...p, isBase });
+            });
+
+            let list = '';
+            pontos.forEach(point => {
+                const serie = seriesMeta.find(s => s.name === point.series.name) || {};
+                const dec = serie.decimals ?? defaultDecimals;
+                const valueStr = new Intl.NumberFormat('pt-BR', { minimumFractionDigits: dec, maximumFractionDigits: dec }).format(point.y || 0);
+                const suffix = serie.suffix || '', prefix = serie.prefix || '';
+                const percStr = (!point.isBase && totalBase) ? `<small class="text-muted">(${Highcharts.numberFormat((point.y / totalBase * 100), 2)}%)</small>` : '';
+                list += `
+                <div class="d-flex justify-content-between align-items-center py-1" style="border-bottom:1px solid rgba(0,0,0,.05);">
+                    <span><span style="color:${point.color}">●</span> ${point.series.name}</span>
+                    <span><b>${prefix}${valueStr}${suffix}</b> ${percStr}</span>
+                </div>`;
+            });
+            if (!this.options.seriesPerc?.length) {
+                const totalStr = new Intl.NumberFormat('pt-BR', { minimumFractionDigits: defaultDecimals, maximumFractionDigits: defaultDecimals }).format(totalGeral);
+                list += `<div class="text-right pt-1"><b>Total:</b> ${totalStr}</div>`;
+            }
+            primaryHtml = list;
+        }
+
+        // mini-pie
+        const dataObjResolved = getExtraForKey(rawKey) || getExtraForKey(keyLabel);
+        if (pieOpts.show && dataObjResolved) {
+            const entries = Object.entries(dataObjResolved);
+            const totalPie = entries.reduce((s, [, v]) => s + (+v || 0), 0);
+            if (entries.length && totalPie > 0) {
+                const pieId = `hc-mini-pie-${this._uid}-${this._slug(rawKey)}`;
+                const pieW = Math.min(pieOpts.width || 560, (window.innerWidth * 0.7) - 24); // acompanha ~70% do card
+                pieHtml = `
+                <div class="mt-2">
+                    ${pieOpts.title ? `<div class="small text-muted mb-1 text-center">${pieOpts.title}</div>` : ''}
+                    <div id="${pieId}" style="width:${pieW}px;height:${pieOpts.height}px;margin:0 auto;"></div>
+                </div>`;
+                setTimeout(() => {
+                    const data = entries.map(([name, val]) => ({ name, y: +val || 0 }));
+                    if (this._miniPieChart) { try { this._miniPieChart.destroy(); } catch (_) { } }
+                    this._miniPieChart = this._createMiniPie(pieId, data, { ...pieOpts, width: pieW });
+                    this._miniPieKey = `${this.options.container}|${rawKey}`;
+                }, 0);
+            }
+        }
+
+        // card com tema “primário”
+        const needsClose = (this.options.tooltip?.mode === 'click');
+
+        const headerHtml = `
+        <div class="card-header hc-click-card-header ${this.options.card?.headerClass || ''}">
+            <div class="hc-header-title">${keyLabel}</div>
+            ${needsClose ? `<button type="button" class="btn-close" aria-label="Fechar" data-hcf-close></button>` : ''}
+        </div>
+        `;
+
+        return `
+            <div class="card shadow-sm small hc-click-card ${this.options.card?.className || ''}" style="margin:0;">
+                ${headerHtml}
+                <div class="card-body">
+                ${primaryHtml}
+                ${pieHtml}
+                </div>
+            </div>
+            `;
+
+    }
+
+    _destroyDT() {
+        if (this._dtLastId && window.jQuery && jQuery.fn?.DataTable) {
+            const $t = jQuery(`#${this._dtLastId}`);
+            if ($t.length && jQuery.fn.DataTable.isDataTable($t[0])) { try { $t.DataTable().destroy(); } catch (_) { } }
+        }
+        this._dtLastId = null;
+    }
+    _slug(str) { return String(str).toLowerCase().replace(/[^a-z0-9]+/gi, '-'); }
+
+    _createMiniPie(containerId, data, opts = {}) {
+        const width = opts.width ?? 210, height = opts.height ?? 140;
+        return Highcharts.chart(containerId, {
+            chart: { type: 'pie', backgroundColor: 'transparent', width, height, animation: false },
+            title: { text: null }, credits: { enabled: false },
+            exporting: { enabled: false, buttons: { contextButton: { enabled: false } } },
+            tooltip: { enabled: false }, legend: { enabled: !!opts.legend },
+            plotOptions: {
+                pie: {
+                    colorByPoint: true, size: '90%', dataLabels: {
+                        enabled: true, useHTML: true, softConnector: true, distance: (opts.labelDistance ?? 16),
+                        formatter: function () {
+                            const fmt = (v, d = 0) => new Intl.NumberFormat('pt-BR', { minimumFractionDigits: d, maximumFractionDigits: d }).format(v);
+                            const name = this.point.name, yStr = fmt(this.point.y, opts.valueDecimals ?? 0), pStr = Highcharts.numberFormat(this.percentage, opts.percentDecimals ?? 1);
+                            return `<div style="text-align:center;line-height:1.1;"><div style="font-weight:600;">${name}</div><div style="font-size:${opts.valueFontSize ?? '10px'};">${yStr} <small>(${pStr}%)</small></div></div>`;
+                        }, style: { fontSize: (opts.labelFontSize ?? '10px'), textOutline: 'none' }
+                    }
+                }
+            },
+            series: [{ name: 'Percentage', data }]
+        });
+    }
+}
+
+
 class DashMicro {
     /**
      * @param {Object} opts
