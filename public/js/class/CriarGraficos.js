@@ -1904,11 +1904,44 @@ class HighchartsFlexible3 {
         const wantTable = tableOpts.enabled && tableOpts.dataByKey;
         let primaryHtml = '';
         let pieHtml = '';
+        let pieRendered = false;
 
         if (wantTable) {
             const resolver = tableOpts.resolve || ((rk, kl, nf) => tableOpts.dataByKey[rk] || tableOpts.dataByKey[kl] || tableOpts.dataByKey[nf(kl)]);
             const dataRows = resolver(rawKey, keyLabel, norm) || [];
             const arr = Array.isArray(dataRows) ? dataRows : Object.entries(dataRows).map(([group, vals]) => ({ group, ...(vals || {}) }));
+            // === DESTAQUES (após const arr = ...) ===
+            const toN = v => +String(v ?? '').replace(/[^\d.-]/g, '') || 0;
+
+            const pickMax = (rows, key) => rows.reduce((best, r) => {
+                const v = toN(r[key]); return (!best || v > best.v) ? { row: r, v } : best;
+            }, null);
+            const pickMin = (rows, key) => rows.reduce((best, r) => {
+                const v = toN(r[key]); return (!best || v < best.v) ? { row: r, v } : best;
+            }, null);
+
+            // destaques
+            const hiRec = pickMax(arr, 'pct_recuperado');     // melhor % recuperação
+            const loRec = pickMin(arr, 'pct_recuperado');     // pior % recuperação
+            const hiAberto = pickMax(arr, 'valor_aberto');       // maior valor em aberto (R$)
+            const hiRecVl = pickMax(arr, 'valor_recuperado');       // maior valor em aberto (R$)
+            const hiImpl = pickMax(arr, 'valor_implantado');   // maior implantado (R$)
+            const hiTkt = pickMax(arr, 'ticket_medio');   // maior implantado (R$)
+
+            // formatadores
+            const fmtPct = v => new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v) + '%';
+            const fmtBRL = v => 'R$ ' + new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v);
+
+            // componente AdminLTE info-box
+            const infoBox = (color, title, big, small) => `
+            <div class="info-box mb-2">
+                <span class="info-box-icon bg-${color}" style="min-width:44px"><i class="fas fa-chart-line"></i></span>
+                <div class="info-box-content" style="line-height:1.1">
+                <span class="info-box-text" style="white-space:normal">${title}</span>
+                <span class="info-box-number" style="font-size:1.05rem">${big}</span>
+                <div class="text-muted" style="font-size:.85rem">${small}</div>
+                </div>
+            </div>`;
 
             const tableId = `hc-tip-table-${this._uid}-${this._slug(rawKey)}`;
             const groupCol = Object.assign({ key: 'group', label: 'Grupo', align: 'text-left' }, tableOpts.groupColumn || {}); groupCol.type = 'string';
@@ -1971,7 +2004,18 @@ class HighchartsFlexible3 {
                     const $el = jQuery(`#${tableId}`); if (!$el.length || jQuery.fn.DataTable.isDataTable($el[0])) return;
 
                     const dtOpts = Object.assign({
-                        dom: 't', autoWidth: false, paging: false, searching: false, info: false, ordering: false, scrollX: true, retrieve: true
+                        dom: 't',
+                        autoWidth: false,
+                        paging: false,
+                        searching: false,
+                        info: false,
+                        ordering: false,
+                        order: [],
+                        aaSorting: [],
+                        orderFixed: null,
+                        columnDefs: [{ targets: '_all', orderable: false }],
+                        scrollX: true,
+                        retrieve: true
                     }, userOpts);
 
                     if (tableOpts.table.showTotalsRow && tableOpts.table.useFooterCallback) {
@@ -1995,6 +2039,51 @@ class HighchartsFlexible3 {
                     this._dtLastId = tableId;
                 }, 0);
             }
+
+            const leftCards = `
+                ${hiImpl ? infoBox('primary', 'Maior valor Implantado (R$)', fmtBRL(hiImpl.v), hiImpl.row.group || '') : ''}
+                ${hiAberto ? infoBox('warning', 'Maior valor em Aberto (R$)', fmtBRL(hiAberto.v), hiAberto.row.group || '') : ''}
+                ${hiTkt ? infoBox('warning', 'Maior Tiket Médio (R$)', fmtBRL(hiTkt.v), hiTkt.row.group || '') : ''}
+            `;
+            const rightCards = `
+                ${hiRecVl ? infoBox('success', 'Melhor valor de Recuperação (R$)', fmtBRL(hiRecVl.v), hiRecVl.row.group || '') : ''}
+                ${hiRec ? infoBox('success', 'Melhor % Recuperação', fmtPct(hiRec.v), hiRec.row.group || '') : ''}
+                ${loRec ? infoBox('danger', 'Menor % Recuperação', fmtPct(loRec.v), loRec.row.group || '') : ''}
+            `;
+
+            // mini-pie central (usa tooltipExtraKey do ponto atual)
+            const dataObjResolved = getExtraForKey(rawKey) || getExtraForKey(keyLabel);
+            let midPie = '';
+            if (pieOpts.show && dataObjResolved) {
+                const entries = Object.entries(dataObjResolved);
+                const totalPie = entries.reduce((s, [, v]) => s + (+v || 0), 0);
+                if (entries.length && totalPie > 0) {
+                    const pieId = `hc-mini-pie-${this._uid}-${this._slug(rawKey)}`;
+                    const pieW = Math.min(pieOpts.width || 560, (window.innerWidth * 0.7) - 24);
+                    midPie = `
+                    ${pieOpts.title ? `<div class="small text-muted mb-1 text-center">${pieOpts.title}</div>` : ''}
+                    <div id="${pieId}" style="width:${pieW}px;height:${pieOpts.height}px;margin:0 auto;"></div>
+                `;
+                    setTimeout(() => {
+                        const data = entries.map(([name, val]) => ({ name, y: +val || 0 }));
+                        if (this._miniPieChart) { try { this._miniPieChart.destroy(); } catch (_) { } }
+                        this._miniPieChart = this._createMiniPie(pieId, data, { ...pieOpts, width: pieW });
+                        this._miniPieKey = `${this.options.container}|${rawKey}`;
+                    }, 0);
+                    pieRendered = true;
+                }
+            }
+
+            const analyticsHtml = `
+            <div class="row align-items-start mt-2">
+            <div class="col-md-4 pr-md-2">${leftCards}</div>
+            <div class="col-md-4">${midPie}</div>
+            <div class="col-md-4 pl-md-2">${rightCards}</div>
+            </div>
+        `;
+
+            primaryHtml = primaryHtml + analyticsHtml;
+
         } else {
             // lista simples das séries
             let totalGeral = 0, totalBase = 0;
@@ -2028,26 +2117,30 @@ class HighchartsFlexible3 {
         }
 
         // mini-pie
-        const dataObjResolved = getExtraForKey(rawKey) || getExtraForKey(keyLabel);
-        if (pieOpts.show && dataObjResolved) {
-            const entries = Object.entries(dataObjResolved);
-            const totalPie = entries.reduce((s, [, v]) => s + (+v || 0), 0);
-            if (entries.length && totalPie > 0) {
-                const pieId = `hc-mini-pie-${this._uid}-${this._slug(rawKey)}`;
-                const pieW = Math.min(pieOpts.width || 560, (window.innerWidth * 0.7) - 24); // acompanha ~70% do card
-                pieHtml = `
-                <div class="mt-2">
+        // mini-pie (fallback quando NÃO usamos a tabela/analyticsHtml)
+        if (!pieRendered) {
+            const dataObjResolved2 = getExtraForKey(rawKey) || getExtraForKey(keyLabel);
+            if (pieOpts.show && dataObjResolved2) {
+                const entries = Object.entries(dataObjResolved2);
+                const totalPie = entries.reduce((s, [, v]) => s + (+v || 0), 0);
+                if (entries.length && totalPie > 0) {
+                    const pieId = `hc-mini-pie-${this._uid}-${this._slug(rawKey)}`;
+                    const pieW = Math.min(pieOpts.width || 560, (window.innerWidth * 0.7) - 24);
+                    pieHtml = `
+                    <div class="mt-2">
                     ${pieOpts.title ? `<div class="small text-muted mb-1 text-center">${pieOpts.title}</div>` : ''}
                     <div id="${pieId}" style="width:${pieW}px;height:${pieOpts.height}px;margin:0 auto;"></div>
-                </div>`;
-                setTimeout(() => {
-                    const data = entries.map(([name, val]) => ({ name, y: +val || 0 }));
-                    if (this._miniPieChart) { try { this._miniPieChart.destroy(); } catch (_) { } }
-                    this._miniPieChart = this._createMiniPie(pieId, data, { ...pieOpts, width: pieW });
-                    this._miniPieKey = `${this.options.container}|${rawKey}`;
-                }, 0);
+                    </div>`;
+                    setTimeout(() => {
+                        const data = entries.map(([name, val]) => ({ name, y: +val || 0 }));
+                        if (this._miniPieChart) { try { this._miniPieChart.destroy(); } catch (_) { } }
+                        this._miniPieChart = this._createMiniPie(pieId, data, { ...pieOpts, width: pieW });
+                        this._miniPieKey = `${this.options.container}|${rawKey}`;
+                    }, 0);
+                }
             }
         }
+
 
         // card com tema “primário”
         const needsClose = (this.options.tooltip?.mode === 'click');

@@ -468,10 +468,11 @@
 
             }
 
-            function calculaArrayTable(rows, keyCol = 1, groupCol = 2) {
+            function calculaArrayTable(rows, keyCol = 1, groupCol = 2, ordemFaixas) {
+
                 const tooltipExtraKey = Utilitarios.pieBreakdownByMulti(rows, {
-                    keyCol: 1,
-                    groupCol: 2,
+                    keyCol: keyCol,
+                    groupCol: groupCol,
                     valueCols: [{
                             name: 'devedor_implantado',
                             spec: 3
@@ -503,40 +504,46 @@
                     ],
                     keyTransform: k => (k.includes('->') ? k.split('->')[1].trim() : k),
                     groupTransform: g => (String(g).includes('->') ? String(g).split('->')[1].trim() : g),
-                    minPct: 0,
-                    //rankBy: 'valor_implantado',
                     toNumber: Utilitarios.parsePtNumber,
 
-                    // derivados entram no final, na ordem listada aqui
                     derived: [{
                             name: 'ticket_medio',
-                            fn: (s) => (s.contrato_implantado > 0 ? (s.valor_implantado / s.contrato_implantado) : 0)
-                        }, {
+                            fn: s => (s.contrato_implantado > 0 ? s.valor_implantado / s.contrato_implantado : 0)
+                        },
+                        {
                             name: 'pct_recuperado',
-                            fn: (s) => (s.valor_implantado > 0 ? (s.valor_recuperado / s.valor_implantado) * 100 : 0)
+                            fn: s => (s.valor_implantado > 0 ? (s.valor_recuperado / s.valor_implantado) * 100 : 0)
                         },
                         {
                             name: 'pct_aberto',
-                            fn: (s) => (s.valor_implantado > 0 ? (s.valor_aberto / s.valor_implantado) * 100 : 0)
-                        }
+                            fn: s => (s.valor_implantado > 0 ? (s.valor_aberto / s.valor_implantado) * 100 : 0)
+                        },
                     ],
 
                     columnsOrder: [
                         'devedor_implantado', 'contrato_implantado',
-                        'valor_implantado',
-                        'ticket_medio',
+                        'valor_implantado', 'ticket_medio',
                         'valor_aberto', 'pct_aberto',
                         'valor_recuperado', 'pct_recuperado',
                         'valor_em_acordo', 'valor_sem_acordo'
                     ],
-                    returnAs: 'array'
+
+                    groupOrder: ordemFaixas, // <- ordem mandada por você
+                    groupOrderUnknown: 'end', // (qualquer faixa não listada vai pro fim)
+                    orderNormalize: s => String(s).trim().toLowerCase(),
+                    returnAs: 'rows',
+                    otherLabel: 'Outros'
                 });
                 return tooltipExtraKey;
             }
 
             function graficoPorImplantacao(ar_dados, id, title, subtitle = 'Aberto/Recebidos', decimal = 2, tipo_grafico = 'areaspline', rows) {
-
-                const tooltipExtraKeyTable = calculaArrayTable(rows);
+                const ordemFaixas = [
+                    '-9999 a 30', '31 a 60', '61 a 90', '91 a 120',
+                    '121 a 150', '151 a 180', '181 a 365', '366 a 730',
+                    '731 a 1095', '1096 a 1460', '1461 a 1825', 'ACIMA DE 1825'
+                ];
+                const tooltipExtraKeyTable = calculaArrayTable(rows, 1, 2, ordemFaixas);
 
                 // 1. Pegar as chaves e ordenar (ano-mês)
                 let keys = Object.keys(ar_dados).sort();
@@ -581,6 +588,7 @@
                         decimals: decimal
                     }
                 ];
+
                 new HighchartsFlexible3({
                     container: id,
                     title,
@@ -594,7 +602,11 @@
                         min: 0
                     },
                     series: series_ar,
-                    tooltip: { mode: 'click', decimals: 2, hoverSummary: true }, 
+                    tooltip: {
+                        mode: 'click',
+                        decimals: 2,
+                        hoverSummary: true
+                    },
                     card: {
                         position: 'center',
                         offset: {
@@ -614,29 +626,9 @@
                             align: 'text-left'
                         },
                         resolve: (rawKey, keyLabel, norm) => {
-                            const byMonth =
-                                tooltipExtraKeyTable[rawKey] ||
+                            return tooltipExtraKeyTable[rawKey] ||
                                 tooltipExtraKeyTable[keyLabel] ||
-                                tooltipExtraKeyTable[norm(keyLabel)];
-                            if (!byMonth) return [];
-
-                            // cada faixa vira uma linha com colunas nomeadas
-                            return Object.entries(byMonth).map(([faixa, items]) => {
-                                const row = {
-                                    group: faixa
-                                };
-                                (items || [])
-                                .forEach(({
-                                    name,
-                                    value
-                                }) => {
-                                    // usa sua função para normalizar números
-                                    row[name] = (window.Utilitarios?.parsePtNumber) ?
-                                        Utilitarios.parsePtNumber(value) :
-                                        +String(value ?? '').replace(/[^\d.-]/g, '') || 0;
-                                });
-                                return row;
-                            });
+                                tooltipExtraKeyTable[norm(keyLabel)] || [];
                         },
                         columns: [{
                                 key: 'devedor_implantado',
@@ -730,6 +722,13 @@
                             {
                                 key: 'valor_em_acordo',
                                 label: 'Em Acordo',
+                                type: 'currency',
+                                align: 'text-right',
+                                decimals: 2,
+                                total: true
+                            }, {
+                                key: 'valor_sem_acordo',
+                                label: 'Sem Acordo',
                                 type: 'currency',
                                 align: 'text-right',
                                 decimals: 2,
