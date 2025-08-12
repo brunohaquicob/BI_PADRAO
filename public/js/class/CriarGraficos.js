@@ -1482,13 +1482,14 @@ class HighchartsFlexible3 {
         this.chart = Highcharts.chart(target, cfg);
 
         // limpar mini-pie ao esconder o tooltip (evita erro #13 / vazamentos)
-        if (showHoverSummary) {
+        if (showHoverSummary && mode === 'hover-native') {
             Highcharts.addEvent(this.chart.tooltip, 'hide', () => {
                 if (this._miniPieChart) { try { this._miniPieChart.destroy(); } catch (_) { } }
                 this._miniPieChart = null;
                 this._miniPieKey = null;
             });
         }
+
 
         return this.chart;
     }
@@ -1687,7 +1688,12 @@ class HighchartsFlexible3 {
         cardEl.style.left = `${left}px`;
         cardEl.style.top = `${top}px`;
 
-        const close = () => { this._destroyDT(); try { overlay.remove(); } catch { } this._closeOverlay = null; };
+        const close = () => {
+            this._destroyDT(); try { overlay.remove(); } catch { } this._closeOverlay = null;
+            if (this._miniPieChart) { try { this._miniPieChart.destroy(); } catch (_) { } }
+            this._miniPieChart = null;
+            this._miniPieKey = null;
+        };
         overlay.addEventListener('click', ev => { if (ev.target === overlay) close(); });
         this._closeOverlay = close;
     }
@@ -1827,6 +1833,10 @@ class HighchartsFlexible3 {
             try { overlay.remove(); } catch (_) { }
             window.removeEventListener('resize', onResize);
             this._closeOverlay = null;
+
+            if (this._miniPieChart) { try { this._miniPieChart.destroy(); } catch (_) { } }
+            this._miniPieChart = null;
+            this._miniPieKey = null;
         };
         if (btnClose) {
             btnClose.addEventListener('click', (ev) => { ev.stopPropagation(); close(); });
@@ -2181,6 +2191,7 @@ class HighchartsFlexible3 {
             exporting: { enabled: false, buttons: { contextButton: { enabled: false } } },
             tooltip: { enabled: false }, legend: { enabled: !!opts.legend },
             plotOptions: {
+                // series: { enableMouseTracking: false },
                 pie: {
                     colorByPoint: true, size: '90%', dataLabels: {
                         enabled: true, useHTML: true, softConnector: true, distance: (opts.labelDistance ?? 16),
