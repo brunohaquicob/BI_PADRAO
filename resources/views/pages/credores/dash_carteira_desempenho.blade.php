@@ -195,6 +195,22 @@
         </div>
 
     </div>
+    <div class="modal fade " id="hcDrillModal" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal-dialog modal-80 modal-dialog-scrollable" role="document">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white py-2">
+                    <h5 class="modal-title">Detalhes</h5>
+                    <button type="button" class="close text-white" data-dismiss="modal" aria-label="Fechar">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body p-3">
+                    <div id="hcDrillBody"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
 @stop
 
 @section('plugins.HighCharts', true)
@@ -468,6 +484,486 @@
 
             }
 
+            // --- helper: HTML do drilldown (cards + pie + tabela) ---
+            function buildDrilldownHTML({
+                keyLabel,
+                rows,
+                extra,
+                opts = {}
+            }) {
+                const fmtNum = (v, d = 2) => new Intl.NumberFormat('pt-BR', {
+                    minimumFractionDigits: d,
+                    maximumFractionDigits: d
+                }).format(+v || 0);
+                const fmtBRL = v => 'R$ ' + fmtNum(v, 2);
+                const fmtPct = v => fmtNum(v, 2) + '%';
+                const toN = v => +String(v ?? '').replace(/[^\d.-]/g, '') || 0;
+
+                const pickMax = (arr, key) => arr.reduce((b, r) => {
+                    const v = toN(r[key]);
+                    return !b || v > b.v ? {
+                        row: r,
+                        v
+                    } : b;
+                }, null);
+                const pickMin = (arr, key) => arr.reduce((b, r) => {
+                    const v = toN(r[key]);
+                    return !b || v < b.v ? {
+                        row: r,
+                        v
+                    } : b;
+                }, null);
+
+                const infoBox = (color, title, big, small) => `
+                <div class="info-box mb-2" title="${small||''}">
+                <span class="info-box-icon bg-${color}" style="min-width:44px"><i class="fas fa-chart-line"></i></span>
+                <div class="info-box-content" style="line-height:1.1">
+                    <span class="info-box-text text-truncate" style="max-width:240px">${title}</span>
+                    <span class="info-box-number" style="font-size:1.05rem">${big}</span>
+                    <div class="text-muted" style="font-size:.85rem">${small||''}</div>
+                </div>
+                </div>`;
+
+                const hiImpl = pickMax(rows, 'valor_implantado');
+                const hiAberto = pickMax(rows, 'valor_aberto');
+                const hiTkt = pickMax(rows, 'ticket_medio');
+                const hiRecVl = pickMax(rows, 'valor_recuperado');
+                const hiRec = pickMax(rows, 'pct_recuperado');
+                const loRec = pickMin(rows, 'pct_recuperado');
+
+                const leftCards = `
+                    ${hiImpl   ? infoBox('primary','Maior valor Implantado (R$)', fmtBRL(hiImpl.v),   hiImpl.row.group || '') : ''}
+                    ${hiAberto ? infoBox('warning','Maior valor em Aberto (R$)',  fmtBRL(hiAberto.v), hiAberto.row.group || '') : ''}
+                    ${hiTkt    ? infoBox('warning','Maior Tiket Médio (R$)',      fmtBRL(hiTkt.v),    hiTkt.row.group || '') : ''}
+                `;
+                                const rightCards = `
+                    ${hiRecVl ? infoBox('success','Melhor valor de Recuperação (R$)', fmtBRL(hiRecVl.v), hiRecVl.row.group || '') : ''}
+                    ${hiRec   ? infoBox('success','Melhor % Recuperação',             fmtPct(hiRec.v),   hiRec.row.group || '')   : ''}
+                    ${loRec   ? infoBox('danger','Menor % Recuperação',               fmtPct(loRec.v),   loRec.row.group || '')   : ''}
+                `;
+
+                // colunas
+                const cols = [{
+                        key: 'group',
+                        label: 'Faixa',
+                        type: 'string',
+                        align: 'text-left'
+                    },
+                    {
+                        key: 'devedor_implantado',
+                        label: 'Dev.Imp',
+                        type: 'int',
+                        align: 'text-center'
+                    },
+                    {
+                        key: 'contrato_implantado',
+                        label: 'Ctr.Imp',
+                        type: 'int',
+                        align: 'text-center'
+                    },
+                    {
+                        key: 'valor_implantado',
+                        label: 'Implantado',
+                        type: 'currency',
+                        align: 'text-right'
+                    },
+                    {
+                        key: 'ticket_medio',
+                        label: 'Ticket',
+                        type: 'currency',
+                        align: 'text-right'
+                    },
+                    {
+                        key: 'valor_aberto',
+                        label: 'Aberto',
+                        type: 'currency',
+                        align: 'text-right'
+                    },
+                    {
+                        key: 'pct_aberto',
+                        label: '% Aberto',
+                        type: 'percent',
+                        align: 'text-center'
+                    },
+                    {
+                        key: 'valor_recuperado',
+                        label: 'Recuperado',
+                        type: 'currency',
+                        align: 'text-right'
+                    },
+                    {
+                        key: 'pct_recuperado',
+                        label: '% Recup.',
+                        type: 'percent',
+                        align: 'text-center'
+                    },
+                    {
+                        key: 'valor_em_acordo',
+                        label: 'Em Acordo',
+                        type: 'currency',
+                        align: 'text-right'
+                    },
+                    {
+                        key: 'valor_sem_acordo',
+                        label: 'Sem Acordo',
+                        type: 'currency',
+                        align: 'text-right'
+                    },
+                ];
+
+                const fmtValue = (v, t) =>
+                    t === 'currency' ? fmtBRL(v) :
+                    t === 'percent' ? fmtPct(v) :
+                    t === 'int' ? fmtNum(v, 0) : fmtNum(v, 2);
+
+                // tbody
+                const thead = '<tr>' + cols.map(c => `<th class="${c.align||''}">${c.label}</th>`).join('') + '</tr>';
+                const tbody = rows.map(r => '<tr>' + cols.map(c => {
+                    const raw = r[c.key];
+                    const val = c.type !== 'string' ? toN(raw) : (raw || '');
+                    return `<td class="${c.align||''}">${c.type==='string'? val : fmtValue(val,c.type)}</td>`;
+                }).join('') + '</tr>').join('');
+
+                // --- totais (HTML pronto, igual sua lógica) ---
+                const totals = (() => {
+                    const sum = k => rows.reduce((s, r) => s + toN(r[k]), 0);
+                    const totVal = sum('valor_implantado');
+                    const totCtr = sum('contrato_implantado');
+                    const totAberto = sum('valor_aberto');
+                    const totRec = sum('valor_recuperado');
+                    return {
+                        devedor_implantado: sum('devedor_implantado'),
+                        contrato_implantado: totCtr,
+                        valor_implantado: totVal,
+                        ticket_medio: totCtr ? (totVal / totCtr) : 0,
+                        valor_aberto: totAberto,
+                        pct_aberto: totVal ? (totAberto / totVal * 100) : 0,
+                        valor_recuperado: totRec,
+                        pct_recuperado: totVal ? (totRec / totVal * 100) : 0,
+                        valor_em_acordo: sum('valor_em_acordo'),
+                        valor_sem_acordo: sum('valor_sem_acordo'),
+                    };
+                })();
+
+                const tfoot = '<tr>' + cols.map((c, idx) => {
+                    if (idx === 0) return `<th class="${c.align||''}">Total</th>`;
+                    const v = totals[c.key];
+                    if (v == null) return `<th class="${c.align||''}"></th>`;
+                    const out = c.type === 'currency' ? fmtBRL(v) :
+                        c.type === 'percent' ? fmtPct(v) :
+                        c.type === 'int' ? fmtNum(v, 0) : fmtNum(v, 2);
+                    return `<th class="${c.align||''}">${out}</th>`;
+                }).join('') + '</tr>';
+
+                // ids únicos
+                const pieId = `hc-mini-pie-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+                const tableId = `hcDrillTable-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
+                const pieData = (extra ? Object.entries(extra).map(([name, val]) => ({
+                    name,
+                    y: +val || 0
+                })) : []);
+                const pieTitle = (opts?.pieTitle) || 'Fases com melhor recuperação';
+                const pieHeight = (opts?.pieHeight) || 280;
+                const tableMaxH = (opts?.tableMaxHeight) || 500;
+
+                const html = `
+                    <div class="mb-2">
+                    {{-- <div class="h5 mb-2">${keyLabel}</div> --}}
+                    
+                    <div class="mt-3" style="max-height:${tableMaxH}px;">
+                        <table id="${tableId}" class="table table-sm small table-hover table-bordered mb-0" style="width:100%;white-space:nowrap;">
+                        <thead>${thead}</thead>
+                        <tbody>${tbody}</tbody>
+                        <tfoot>${tfoot}</tfoot>
+                        </table>
+                    </div>
+                    <div class="row align-items-start">
+                        <div class="col-md-4 pr-md-2">${leftCards}</div>
+                        <div class="col-md-4">
+                        <div class="small text-muted mb-1 text-center">${pieTitle}</div>
+                        <div id="${pieId}" style="width:100%;height:${pieHeight}px;"></div>
+                        </div>
+                        <div class="col-md-4 pl-md-2">${rightCards}</div>
+                    </div>
+                    </div>`;
+
+                // ---------- Renderizadores c/ espera de visibilidade ----------
+                const renderPieWhenVisible = (tries = 30) => {
+                    const el = document.getElementById(pieId);
+                    if (!el || el.offsetWidth === 0) {
+                        if (tries > 0) return setTimeout(() => renderPieWhenVisible(tries - 1), 50);
+                        return;
+                    }
+                    if (!pieData.length) {
+                        el.innerHTML = '<div class="text-center text-muted">Sem dados do pie</div>';
+                        return;
+                    }
+
+                    Highcharts.chart(pieId, {
+                        chart: {
+                            type: 'pie',
+                            backgroundColor: 'transparent',
+                            animation: false
+                        },
+                        title: {
+                            text: null
+                        },
+                        credits: {
+                            enabled: false
+                        },
+                        exporting: {
+                            enabled: false,
+                            buttons: {
+                                contextButton: {
+                                    enabled: false
+                                }
+                            }
+                        },
+                        tooltip: {
+                            enabled: false
+                        },
+                        legend: {
+                            enabled: false
+                        },
+                        plotOptions: {
+                            series: {
+                                enableMouseTracking: true
+                            },
+                            pie: {
+                                colorByPoint: true,
+                                size: '90%',
+                                dataLabels: {
+                                    enabled: true,
+                                    useHTML: true,
+                                    softConnector: true,
+                                    distance: 12,
+                                    formatter: function() {
+                                        const n = this.point.name,
+                                            y = this.point.y;
+                                        const pct = Highcharts.numberFormat(this.percentage, 2);
+                                        return '<div style="text-align:center;line-height:1.1;"><div style="font-weight:600;">' + n +
+                                            '</div><div style="font-size:10px;">' + y.toLocaleString('pt-BR') + ' <small>(' + pct + '%)</small></div></div>';
+                                    },
+                                    style: {
+                                        fontSize: '10px',
+                                        textOutline: 'none'
+                                    }
+                                }
+                            }
+                        },
+                        series: [{
+                            data: pieData
+                        }]
+                    });
+                };
+
+                const initDataTableWhenVisible = (tries = 30) => {
+                    if (!(window.jQuery && jQuery.fn && jQuery.fn.DataTable)) return; // sem DT, não inicializa
+                    const $t = jQuery('#' + tableId);
+                    const el = $t[0];
+                    if (!el || el.offsetWidth === 0) {
+                        if (tries > 0) return setTimeout(() => initDataTableWhenVisible(tries - 1), 50);
+                        return;
+                    }
+                    if (jQuery.fn.DataTable.isDataTable(el)) return;
+
+                    const dt = $t.DataTable({
+                        autoWidth: false,
+                        paging: false,
+                        searching: false,
+                        info: false,
+                        ordering: false,
+                        order: [],
+                        aaSorting: [],
+                        orderFixed: null,
+                        columnDefs: [{ targets: '_all', orderable: false }],
+                        //scrollX: true,
+                        retrieve: true,
+                        "dom": "<'row'<'col-xs-6 col-md-4'><'col-xs-6 col-md-4 text-center'B><'col-xs-12 col-md-4'f>>t",
+                        // Não usamos footerCallback: o footer já veio calculado no HTML (mais robusto).
+                    });
+
+                    setTimeout(() => {
+                        try {
+                            dt.columns().adjust();
+                        } catch (_) {}
+                    }, 0);
+                };
+
+                const renderAll = () => {
+                    renderPieWhenVisible();
+                    initDataTableWhenVisible();
+                };
+
+                return {
+                    html,
+                    renderAll,
+                    tableId
+                };
+            }
+
+
+
+            // --- função principal: cria o gráfico (hover) e liga o click para abrir a modal ---
+            function graficoPorImplantacao(ar_dados, id, title, subtitle = 'Aberto/Recebidos', decimal = 2, tipo_grafico = 'areaspline', rows) {
+                const ordemFaixas = [
+                    '-9999 a 30', '31 a 60', '61 a 90', '91 a 120',
+                    '121 a 150', '151 a 180', '181 a 365', '366 a 730',
+                    '731 a 1095', '1096 a 1460', '1461 a 1825', 'ACIMA DE 1825'
+                ];
+                const tooltipExtraKeyTable = calculaArrayTable(rows, 1, 2, ordemFaixas);
+
+                // 1. Pegar as chaves e ordenar (ano-mês) e ajustar label
+                let keys = Object.keys(ar_dados).sort();
+                let key_ajust = keys.map(s => s.includes('->') ? s.split('->')[1].trim() : s);
+                // 2. Arrays das séries
+                let arrA = keys.map(k => ar_dados[k].A);
+                let arrN = keys.map(k => ar_dados[k].N);
+                let arrR = keys.map(k => ar_dados[k].R);
+
+                // dados do mini-pie (por key)
+                const tooltipExtraKey = Utilitarios.pieBreakdownBy(rows, {
+                    keyCol: 1, // DATA_IMPLANTACAO
+                    groupCol: 2, // FASE
+                    valueCol: 11, // valor recebido
+                    keyTransform: k => (k.includes('->') ? k.split('->')[1].trim() : k),
+                    groupTransform: g => (String(g).includes('->') ? String(g).split('->')[1].trim() : g),
+                    topN: 6,
+                    toNumber: Utilitarios.parsePtNumber
+                });
+
+                const series_ar = [{
+                        name: 'Em Aberto',
+                        type: tipo_grafico,
+                        data: arrA,
+                        prefix: '',
+                        decimals: decimal
+                    },
+                    {
+                        name: 'Em Acordo',
+                        type: tipo_grafico,
+                        data: arrN,
+                        prefix: '',
+                        decimals: decimal
+                    },
+                    {
+                        name: 'Recebido',
+                        type: tipo_grafico,
+                        data: arrR,
+                        prefix: '',
+                        decimals: decimal
+                    },
+                ];
+
+                // --- cria o gráfico (apenas hover) ---
+                const chart = new HighchartsFlexible3({
+                    container: id,
+                    title,
+                    subtitle,
+                    xAxis: {
+                        type: 'category',
+                        categories: key_ajust
+                    },
+                    yAxis: {
+                        title: '',
+                        min: 0
+                    },
+                    series: series_ar,
+                    tooltip: {
+                        mode: 'hover-native',
+                        decimals: 2,
+                        hoverSummary: true
+                    },
+                    plotOptions: {
+                        series: {
+                            marker: {
+                                radius: 2.5
+                            }
+                        }
+                    },
+                    tooltipExtraKey: tooltipExtraKey,
+                    tooltipMiniPie: {
+                        show: true,
+                        title: 'FASES COM MELHOR RECUPERAÇÃO',
+                        width: 500,
+                        height: 280,
+                        valueDecimals: 2,
+                        percentDecimals: 2
+                    }
+                }).build();
+
+                // --- bind do click fora da classe: abre a modal com os detalhes ---
+                const norm = s => String(s ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
+                const getRowsFor = (label) => tooltipExtraKeyTable[label] || tooltipExtraKeyTable[norm(label)] || [];
+                const getExtraFor = (label) => tooltipExtraKey[label] || tooltipExtraKey[norm(label)] || null;
+
+                // evita duplo-bind se recriar o gráfico
+                const containerEl = document.getElementById(id);
+                if (!containerEl) return chart;
+                if (containerEl.dataset.hcClickBound === '1') return chart;
+                containerEl.dataset.hcClickBound = '1';
+
+                // para cada ponto de cada série visível, adiciona handler
+                chart.series.forEach(s => {
+                    (s.points || [])
+                    .forEach(pt => {
+                        Highcharts.addEvent(pt, 'click', function() {
+                            const x = this.x;
+                            // pega o label da categoria
+                            const keyLabel = (chart.xAxis[0].categories && chart.xAxis[0].categories[x]) || this.category || String(x);
+                            const rowsKey = getRowsFor(keyLabel);
+                            const extraKey = getExtraFor(keyLabel);
+
+                            const {
+                                html,
+                                renderAll,
+                                tableId
+                            } = buildDrilldownHTML({
+                                keyLabel,
+                                rows: Array.isArray(rowsKey) ? rowsKey : [],
+                                extra: extraKey,
+                                opts: {
+                                    pieTitle: 'FASES COM MELHOR RECUPERAÇÃO',
+                                    pieHeight: 280,
+                                    tableMaxHeight: 500
+                                }
+                            });
+
+                            const $modal = $('#hcDrillModal');
+                            $modal.find('.modal-title').text(keyLabel);
+                            $modal.find('#hcDrillBody').html(html);
+
+                            // garante render DEPOIS que a modal ficar visível
+                            $modal.one('shown.bs.modal', () => renderAll());
+                            $modal.data('hcTableId', tableId).modal('show');
+
+                            // cleanup
+                            $modal.on('hidden.bs.modal', function() {
+                                const id = $(this).data('hcTableId');
+                                if (id && $.fn.DataTable && $.fn.DataTable.isDataTable($('#' + id)[0])) {
+                                    try {
+                                        $('#' + id).DataTable().destroy();
+                                    } catch (_) {}
+                                }
+                                $('#hcDrillBody').empty();
+                                $(this).removeData('hcTableId');
+                            });
+
+                        });
+                    });
+                });
+
+                // cleanup simples ao fechar a modal
+                $('#hcDrillModal').on('hidden.bs.modal', function() {
+                    $('#hcDrillBody').empty();
+                });
+
+                return chart;
+            }
+
+
+
             function calculaArrayTable(rows, keyCol = 1, groupCol = 2, ordemFaixas) {
 
                 const tooltipExtraKey = Utilitarios.pieBreakdownByMulti(rows, {
@@ -537,7 +1033,10 @@
                 return tooltipExtraKey;
             }
 
-            function graficoPorImplantacao(ar_dados, id, title, subtitle = 'Aberto/Recebidos', decimal = 2, tipo_grafico = 'areaspline', rows) {
+
+
+
+            function graficoPorImplantacaoBKP(ar_dados, id, title, subtitle = 'Aberto/Recebidos', decimal = 2, tipo_grafico = 'areaspline', rows) {
                 const ordemFaixas = [
                     '-9999 a 30', '31 a 60', '61 a 90', '91 a 120',
                     '121 a 150', '151 a 180', '181 a 365', '366 a 730',

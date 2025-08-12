@@ -1398,6 +1398,260 @@ class HighchartsFlexible3 {
             xAxis: { type: 'category', title: '', dateTimeLabelFormats: { month: '%e. %b', year: '%b' }, categories: null },
             yAxis: { title: '', min: 0 },
 
+            // >>> somente hover
+            tooltip: { decimals: 2, mode: 'hover-native', hoverSummary: true },
+
+            // opções ainda aceitas (só usadas no hover-mini-pie)
+            tooltipExtraKey: null,
+            tooltipMiniPie: {
+                show: true, title: null, width: 400, height: 260, cardMinWidth: 340,
+                labelDistance: 12, valueFontSize: '10px', valueDecimals: 0, percentDecimals: 2,
+                legend: false, nameMaxChars: 6, outsideDistance: 12, insideDistance: -34
+            },
+
+            // mantemos plotOptions para marker etc (sem eventos de click aqui)
+            plotOptions: {
+                series: { marker: { symbol: 'circle', fillColor: 'var(--highcharts-background-color,#fff)', enabled: true, radius: 2.5, lineWidth: 1, lineColor: null } }
+            },
+
+            series: []
+        }, options);
+
+        this._uid = Math.random().toString(36).slice(2);
+    }
+
+    build() {
+        const mode = this.options.tooltip?.mode || 'hover-native';
+        const showHoverSummary = !!this.options.tooltip?.hoverSummary;
+
+        const cfg = {
+            chart: { type: this.options.chartType },
+            title: { text: this.options.title },
+            subtitle: { text: this.options.subtitle },
+            ...(this.options.colors ? { colors: this.options.colors } : {}),
+            xAxis: this._buildXAxis(),
+            yAxis: this.options.yAxis,
+            tooltip: showHoverSummary
+                ? this._buildTooltipHover()
+                : this._buildHighchartsTooltip(),
+            plotOptions: (this.options.plotOptions || {}),
+            series: this._prepareSeries()
+        };
+
+        const target = (typeof this.options.container === 'string')
+            ? document.getElementById(this.options.container.replace(/^#/, ''))
+            : this.options.container;
+
+        if (!target) { console.error('HighchartsFlexible3: container não encontrado'); return null; }
+
+        this.chart = Highcharts.chart(target, cfg);
+
+        // limpar mini-pie ao esconder o tooltip (apenas no hover nativo)
+        if (showHoverSummary && mode === 'hover-native') {
+            Highcharts.addEvent(this.chart.tooltip, 'hide', () => {
+                if (this._miniPieChart) { try { this._miniPieChart.destroy(); } catch (_) { } }
+                this._miniPieChart = null;
+                this._miniPieKey = null;
+            });
+        }
+
+        return this.chart;
+    }
+
+    _buildTooltipHover() {
+        const seriesMeta = this.options.series || [];
+        const xType = this.options?.xAxis?.type ?? 'category';
+        const seriesPerc = this.options.seriesPerc || [];
+        const defaultDecimals = this.options?.tooltip?.decimals ?? 2;
+
+        const pieOpts = Object.assign({
+            show: true, title: null, width: 210, height: 140, cardMinWidth: 340,
+            dataLabelsDecimals: 0, legend: false, nameMaxChars: 6,
+            outsideDistance: 12, insideDistance: -34, valueDecimals: 0, percentDecimals: 2,
+            valueFontSize: '10px'
+        }, this.options.tooltipMiniPie || {});
+
+        const extraByKey = this.options.tooltipExtraKey || null;
+        const self = this;
+
+        const norm = s => String(s ?? '')
+            .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+            .replace(/\s+/g, ' ').trim().toLowerCase();
+
+        const getExtraForKey = (k) => {
+            if (!extraByKey) return null;
+            if (!self._extraNormMap) {
+                self._extraNormMap = {};
+                Object.keys(extraByKey).forEach(key => { self._extraNormMap[norm(key)] = extraByKey[key]; });
+            }
+            return extraByKey[k] || extraByKey[String(k)] || self._extraNormMap[norm(k)] || null;
+        };
+
+        const fmtNumber = (v, dec) => new Intl.NumberFormat('pt-BR', {
+            minimumFractionDigits: dec ?? 0, maximumFractionDigits: dec ?? 0
+        }).format(+v || 0);
+
+        return {
+            shared: true,
+            useHTML: true,
+            borderWidth: 0,
+            outside: true,
+            formatter: function () {
+                const rawKey = (xType === 'datetime') ? this.x : this.key;
+                let keyLabel = this.key;
+                if (xType === 'datetime') keyLabel = Highcharts.dateFormat('%e. %b %Y', this.x);
+
+                let totalGeral = 0, totalBase = 0;
+                const pontos = [];
+                this.points.forEach(p => {
+                    totalGeral += (p.y || 0);
+                    const isBase = seriesPerc.includes(p.series.name);
+                    if (!isBase) totalBase += (p.y || 0);
+                    pontos.push({ ...p, isBase });
+                });
+
+                // extras para mini-pie
+                const dataObjResolved = getExtraForKey(rawKey) || getExtraForKey(keyLabel);
+                const entries = Object.entries(dataObjResolved || {});
+                const totalPie = entries.reduce((s, [, v]) => s + (+v || 0), 0);
+                const hasExtra = pieOpts.show && entries.length && totalPie > 0;
+
+                const pieId = `hc-mini-pie-${self._uid}-${String(rawKey).toLowerCase().replace(/[^a-z0-9]+/gi, '-')}`;
+
+                // header + lista
+                let html = `
+          <div class="card shadow-sm small" style="min-width:${pieOpts.cardMinWidth}px;margin:0;">
+            <div class="card-header py-1 text-center font-weight-bold">${keyLabel}</div>
+            <ul class="list-group list-group-flush">`;
+
+                pontos.forEach(point => {
+                    const serie = seriesMeta.find(s => s.name === point.series.name) || {};
+                    const dec = serie.decimals ?? defaultDecimals;
+                    const valueStr = fmtNumber(point.y, dec);
+                    const suffix = serie.suffix || '';
+                    const prefix = serie.prefix || '';
+
+                    let percStr = '';
+                    if (!point.isBase && totalBase) {
+                        const perc = (point.y / totalBase * 100);
+                        percStr = `<small class="text-muted">(${Highcharts.numberFormat(perc, 2)}%)</small>`;
+                    }
+
+                    html += `
+            <li class="list-group-item d-flex justify-content-between align-items-center py-1">
+              <span><span style="color:${point.color}">●</span> ${point.series.name}</span>
+              <span><b>${prefix}${valueStr}${suffix}</b> ${percStr}</span>
+            </li>`;
+                });
+
+                if (!seriesPerc?.length) {
+                    const totalStr = fmtNumber(totalGeral, defaultDecimals);
+                    html += `<li class="list-group-item text-right"><b>Total:</b> ${totalStr}</li>`;
+                }
+
+                // mini-pie
+                if (hasExtra) {
+                    const titleHtml = pieOpts.title ? `<div class="small text-muted mb-1 text-center">${pieOpts.title}</div>` : '';
+                    html += `
+            <li class="list-group-item">
+              ${titleHtml}
+              <div id="${pieId}" style="width:${pieOpts.width}px;height:${pieOpts.height}px;margin:0 auto;"></div>
+            </li>`;
+                }
+
+                html += `</ul></div>`;
+
+                // render mini-pie async (com retry)
+                if (hasExtra) {
+                    const data = entries.map(([name, val]) => ({ name, y: Number(val) || 0 }));
+                    const cacheKey = `${self.options.container}|${rawKey}`;
+                    const renderPie = (tries = 15) => {
+                        const el = document.getElementById(pieId);
+                        if (!el) { if (tries > 0) return setTimeout(() => renderPie(tries - 1), 16); return; }
+                        if (self._miniPieChart && self._miniPieKey !== cacheKey) {
+                            try { self._miniPieChart.destroy(); } catch (_) { }
+                            self._miniPieChart = null;
+                        }
+                        self._miniPieChart = self._createMiniPie(pieId, data, pieOpts);
+                        self._miniPieKey = cacheKey;
+                    };
+                    renderPie();
+                }
+
+                return html;
+            }
+        };
+    }
+
+    _buildHighchartsTooltip() {
+        // fallback: tooltip simples nativo
+        return { shared: true, outside: true };
+    }
+
+    _buildXAxis() {
+        const x = this.options.xAxis;
+        const base = { title: { text: x.title || '' } };
+        if (x.type === 'datetime') return { ...base, type: 'datetime', dateTimeLabelFormats: x.dateTimeLabelFormats || { month: '%e. %b', year: '%b' } };
+        if (x.type === 'category') return { ...base, type: 'category', categories: x.categories || [] };
+        return { ...base, type: 'linear' };
+    }
+
+    _prepareSeries() {
+        const xType = this.options.xAxis.type;
+        return this.options.series.map(s => {
+            if (!s.data) s.data = [];
+            if (xType === 'datetime') s.data = s.data.map(([x, y]) => [Date.parse(x), y]);
+            return s;
+        });
+    }
+
+    _destroyDT() {
+        if (this._dtLastId && window.jQuery && jQuery.fn?.DataTable) {
+            const $t = jQuery(`#${this._dtLastId}`);
+            if ($t.length && jQuery.fn.DataTable.isDataTable($t[0])) { try { $t.DataTable().destroy(); } catch (_) { } }
+        }
+        this._dtLastId = null;
+    }
+
+    _createMiniPie(containerId, data, opts = {}) {
+        const width = opts.width ?? 210, height = opts.height ?? 140;
+        return Highcharts.chart(containerId, {
+            chart: { type: 'pie', backgroundColor: 'transparent', width, height, animation: false },
+            title: { text: null }, credits: { enabled: false },
+            exporting: { enabled: false, buttons: { contextButton: { enabled: false } } },
+            tooltip: { enabled: false }, legend: { enabled: !!opts.legend },
+            plotOptions: {
+                series: { enableMouseTracking: false },
+                pie: {
+                    colorByPoint: true, size: '90%', dataLabels: {
+                        enabled: true, useHTML: true, softConnector: true, distance: (opts.labelDistance ?? 16),
+                        formatter: function () {
+                            const fmt = (v, d = 0) => new Intl.NumberFormat('pt-BR', { minimumFractionDigits: d, maximumFractionDigits: d }).format(v);
+                            const name = this.point.name, yStr = fmt(this.point.y, opts.valueDecimals ?? 0), pStr = Highcharts.numberFormat(this.percentage, opts.percentDecimals ?? 1);
+                            return `<div style="text-align:center;line-height:1.1;"><div style="font-weight:600;">${name}</div><div style="font-size:${opts.valueFontSize ?? '10px'};">${yStr} <small>(${pStr}%)</small></div></div>`;
+                        }, style: { fontSize: (opts.labelFontSize ?? '10px'), textOutline: 'none' }
+                    }
+                }
+            },
+            series: [{ name: 'Percentage', data }]
+        });
+    }
+}
+
+
+class HighchartsFlexible3BKP {
+    constructor(options) {
+        this.options = Object.assign({
+            container: 'container',
+            chartType: 'spline',
+            title: '',
+            subtitle: '',
+            seriesPerc: null,
+            colors: null,
+
+            xAxis: { type: 'category', title: '', dateTimeLabelFormats: { month: '%e. %b', year: '%b' }, categories: null },
+            yAxis: { title: '', min: 0 },
+
             tooltip: { decimals: 2, mode: 'click' }, // abre por clique
 
             // Aparência do card
