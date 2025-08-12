@@ -117,10 +117,14 @@
 }
 
 .info-box .info-box-text,
-.info-box .info-box-number,
+.info-box .info-box-number
+{
+  font-size: clamp(12px, 2vw, 16px);
+}
+
 .small-box h3
 {
-  font-size: clamp(12px, 2vw, 24px);
+  font-size: clamp(12px, 2vw, 30px);
 }
 
 .small-box p span {

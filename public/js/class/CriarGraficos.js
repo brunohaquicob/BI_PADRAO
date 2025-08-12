@@ -2086,11 +2086,11 @@ class HighchartsFlexible3 {
 
             const analyticsHtml = `
             <div class="row align-items-start mt-2">
-            <div class="col-md-4 pr-md-2">${leftCards}</div>
-            <div class="col-md-4">${midPie}</div>
-            <div class="col-md-4 pl-md-2">${rightCards}</div>
+            <div class="col-md-3 pr-md-2">${leftCards}</div>
+            <div class="col-md-6">${midPie}</div>
+            <div class="col-md-3 pl-md-2">${rightCards}</div>
             </div>
-        `;
+            `;
 
             primaryHtml = primaryHtml + analyticsHtml;
 
@@ -2191,7 +2191,7 @@ class HighchartsFlexible3 {
             exporting: { enabled: false, buttons: { contextButton: { enabled: false } } },
             tooltip: { enabled: false }, legend: { enabled: !!opts.legend },
             plotOptions: {
-                // series: { enableMouseTracking: false },
+                series: { enableMouseTracking: false },
                 pie: {
                     colorByPoint: true, size: '90%', dataLabels: {
                         enabled: true, useHTML: true, softConnector: true, distance: (opts.labelDistance ?? 16),
