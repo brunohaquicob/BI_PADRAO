@@ -1520,9 +1520,9 @@ class HighchartsFlexible3 {
 
                 // header + lista
                 let html = `
-          <div class="card shadow-sm small" style="min-width:${pieOpts.cardMinWidth}px;margin:0;">
-            <div class="card-header py-1 text-center font-weight-bold">${keyLabel}</div>
-            <ul class="list-group list-group-flush">`;
+                <div class="card shadow-sm small" style="min-width:${pieOpts.cardMinWidth}px;margin:0;">
+                    <div class="card-header py-1 text-center font-weight-bold">${keyLabel}</div>
+                    <ul class="list-group list-group-flush">`;
 
                 pontos.forEach(point => {
                     const serie = seriesMeta.find(s => s.name === point.series.name) || {};
@@ -1538,10 +1538,10 @@ class HighchartsFlexible3 {
                     }
 
                     html += `
-            <li class="list-group-item d-flex justify-content-between align-items-center py-1">
-              <span><span style="color:${point.color}">●</span> ${point.series.name}</span>
-              <span><b>${prefix}${valueStr}${suffix}</b> ${percStr}</span>
-            </li>`;
+                    <li class="list-group-item d-flex justify-content-between align-items-center py-1">
+                    <span><span style="color:${point.color}">●</span> ${point.series.name}</span>
+                    <span><b>${prefix}${valueStr}${suffix}</b> ${percStr}</span>
+                    </li>`;
                 });
 
                 if (!seriesPerc?.length) {
@@ -1553,10 +1553,10 @@ class HighchartsFlexible3 {
                 if (hasExtra) {
                     const titleHtml = pieOpts.title ? `<div class="small text-muted mb-1 text-center">${pieOpts.title}</div>` : '';
                     html += `
-            <li class="list-group-item">
-              ${titleHtml}
-              <div id="${pieId}" style="width:${pieOpts.width}px;height:${pieOpts.height}px;margin:0 auto;"></div>
-            </li>`;
+                    <li class="list-group-item">
+                    ${titleHtml}
+                    <div id="${pieId}" style="width:${pieOpts.width}px;height:${pieOpts.height}px;margin:0 auto;"></div>
+                    </li>`;
                 }
 
                 html += `</ul></div>`;
