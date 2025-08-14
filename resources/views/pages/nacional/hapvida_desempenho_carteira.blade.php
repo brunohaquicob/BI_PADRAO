@@ -410,7 +410,7 @@
                 let tooltipExtraKey = (rows != "") ? Utilitarios.pieBreakdownBy(rows, {
                     keyCol: key_coluna, // DATA_IMPLANTACAO
                     groupCol: 6, // FASE
-                    valueCol: 9, // recuperado
+                    valueCol: '9+10+12', // recuperado
                     keyTransform: k => (k.includes('->') ? k.split('->')[1].trim() : k), // pra casar com key_ajust
                     groupTransform: g => (String(g).includes('->') ? String(g).split('->')[1].trim() : g),
                     // Opcional:
@@ -464,7 +464,7 @@
                     },
                     tooltipExtraKey: tooltipExtraKey,
                     tooltipMiniPie: {
-                        title: 'FASES COM MELHOR RECUPERAÇÃO',
+                        title: 'FASES COM MELHOR RECUPERAÇÃO GERAL',
                         width: 400,
                         height: 260,
                         labelDistance: 12,
