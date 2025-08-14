@@ -83,20 +83,31 @@
                             <div class="row g-2" id="filtrosGraficos">
                             </div>
                             <div class="row">
-                                <div class="col-3">
-                                    <x-boxdynamic-component component-name="smallbox" identificador="1" color="lightblue" icon="ion ion-social-usd" text1="0" text2="Valor Implantado." />
+                                <div class="col-4">
+                                    <x-boxdynamic-component component-name="smallbox" identificador="1_1" color="lightblue" icon="ion ion-social-usd" text1="0" text2="Valor Implantado." />
                                 </div>
-                                <div class="col-3">
-                                    <x-boxdynamic-component component-name="smallbox" identificador="2" color="lightblue" icon="ion ion-social-usd" text1="0" text2="Valor Recuperado." />
+                                <div class="col-4">
+                                    <x-boxdynamic-component component-name="smallbox" identificador="1_2" color="lightblue" icon="ion ion-social-usd" text1="0" text2="Valor Aberto." />
                                 </div>
+                                <div class="col-4">
+                                    <x-boxdynamic-component component-name="smallbox" identificador="1_3" color="lightblue" icon="ion ion-social-usd" text1="0" text2="Valor Recuperado." />
+                                </div>
+                            </div>
+                            <div class="row">
                                 {{-- <div class="col-2">
                                     <x-boxdynamic-component component-name="smallbox" identificador="3" color="success" icon="ion ion-arrow-graph-up-right" text1="0" text2="% Recuperado." />
                                 </div> --}}
                                 <div class="col-3">
-                                    <x-boxdynamic-component component-name="smallbox" identificador="4" color="olive" icon="ion ion-heart-broken" text1="0" text2="Vidas Implantadas." />
+                                    <x-boxdynamic-component component-name="smallbox" identificador="2_1" color="olive" icon="ion ion-heart-broken" text1="0" text2="Vidas Implantadas." />
                                 </div>
                                 <div class="col-3">
-                                    <x-boxdynamic-component component-name="smallbox" identificador="5" color="olive" icon="ion ion-heart" text1="0" text2="Vidas Recuperadas." />
+                                    <x-boxdynamic-component component-name="smallbox" identificador="2_2" color="olive" icon="ion ion-heart" text1="0" text2="Vidas Recuperadas Duplicidade." />
+                                </div>
+                                <div class="col-3">
+                                    <x-boxdynamic-component component-name="smallbox" identificador="2_3" color="olive" icon="ion ion-heart" text1="0" text2="Vidas Recuperadas." />
+                                </div>
+                                <div class="col-3">
+                                    <x-boxdynamic-component component-name="smallbox" identificador="2_4" color="olive" icon="ion ion-heart" text1="0" text2="Vidas Recuperadas Parcial." />
                                 </div>
                                 {{-- <div class="col-2">
                                     <x-boxdynamic-component component-name="smallbox" identificador="6" color="success" icon="ion ion-arrow-graph-up-right" text1="0" text2="% Recuperado." />
@@ -228,13 +239,13 @@
                     order: [
                         [8, 'desc']
                     ],
-                    externalFilters: {
+                    /*externalFilters: {
                         container: '#filtrosGraficos',
                         columns: tabela.filtrosHeader ?? [], // ou [0,3,5] etc.
                         globalSearch: '#buscaGlobal', // opcional
                         colClass: 'col-12 col-sm-6 col-md-3',
                         // keepHeader: true // manter também os selects no header
-                    }
+                    }*/
                 }, undefined, true);
 
                 const dtf = new DTFiltrados(table);
@@ -260,19 +271,43 @@
                     SweetAlert.alertAutoClose("info", "Precisamos de sua atenção", "Sem dados para gerar Graficos!", 5000)
                     return true;
                 }
+                /*
+                0 "data"
+                1 "cancelamento"
+                2 "frente"
+                3 "filial"
+                4 "operadora"
+                5 "porte"
+                6 "fase"
+                7 "contratos"
+                8 "vidas"
+                9 "vidas_recuperadas"
+                10 "vidas_recuperadas_duplicidade"
+                11 "vidas_recuperadas_perc"
+                12 "vidas_recuperadas_parcial"
+                13 "vidas_recuperadas_parcial_duplicidade"
+                14 "vidas_devolvidas"
+                15 "vl_implantado"
+                16 "vl_aberto"
+                17 "vl_recuperado"
+                */
                 const ar_valores = {
                     CON: 7,
                     VIDA: 8,
                     VIDAR: 9,
-                    VIDAD: 11,
+                    VIDARD: 10,
+                    VIDARP: 12,
+                    VIDARPD: 13,
+                    VIDAD: 14,
                     //VIDAA: '8-9-11',
-                    IMP: 12,
-                    IMPA: 13,
-                    IMPR: 14,
+                    IMP: 15,
+                    IMPA: 16,
+                    IMPR: 17,
                 }
 
                 //const ar_total          = Utilitarios.sumColumnsFormula(rows, ar_valores);
                 const ar_total = Utilitarios.sumColumns(rows, ar_valores);
+                console.log(ar_total)
                 const ar_implantacao = Utilitarios.sumColumns(rows, ar_valores, 0);
                 const ar_cancelado = Utilitarios.sumColumns(rows, ar_valores, 1);
                 const ar_frente = Utilitarios.sumColumns(rows, ar_valores, 2);
@@ -280,18 +315,23 @@
                 const ar_porte = Utilitarios.sumColumns(rows, ar_valores, 5);
                 const ar_fase = Utilitarios.sumColumns(rows, ar_valores, 6);
 
-                
-
                 //ATUALIZAR CARDS
                 const time_animacao = 1500;
                 //await animarNumeroBRL('#smallbox1-1', 0, ar_total.IMP, time_animacao, 2, '', '', true);
                 await Promise.all([
-                    animarNumeroBRL('#smallbox1-1', 0, ar_total.IMP, time_animacao, 2, '', '', true),
-                    animarNumeroBRL('#smallbox2-1', 0, ar_total.IMPR, time_animacao, 2, '', '', true),
-                    animarNumeroBRL('#smallbox2-2', 0, (ar_total.IMP > 0 ? (ar_total.IMPR / ar_total.IMP * 100) : 0), time_animacao, 2, 'Valor Recuperado (<b>', '%</b>)', true),
-                    animarNumeroBRL('#smallbox4-1', 0, ar_total.VIDA, time_animacao, 0, '', '', true),
-                    animarNumeroBRL('#smallbox5-1', 0, ar_total.VIDAR, time_animacao, 0, '', '', true),
-                    animarNumeroBRL('#smallbox5-2', 0, (ar_total.VIDA > 0 ? ((ar_total.VIDAR) / ar_total.VIDA * 100) : 0), time_animacao, 2, 'Vidas Recuperadas (<b>', '%</b>)', true),
+                    animarNumeroBRL('#smallbox1_1-1', 0, ar_total.IMP, time_animacao, 2, '', '', true),
+                    animarNumeroBRL('#smallbox1_2-1', 0, ar_total.IMPA, time_animacao, 2, '', '', true),
+                    animarNumeroBRL('#smallbox1_2-2', 0, (ar_total.IMP > 0 ? (ar_total.IMPA / ar_total.IMP * 100) : 0), time_animacao, 2, 'Valor Aberto (<b>', '%</b>)', true),
+                    animarNumeroBRL('#smallbox1_3-1', 0, ar_total.IMPR, time_animacao, 2, '', '', true),
+                    animarNumeroBRL('#smallbox1_3-2', 0, (ar_total.IMP > 0 ? (ar_total.IMPR / ar_total.IMP * 100) : 0), time_animacao, 2, 'Valor Recuperado (<b>', '%</b>)', true),
+
+                    animarNumeroBRL('#smallbox2_1-1', 0, ar_total.VIDA, time_animacao, 0, '', '', true),
+                    animarNumeroBRL('#smallbox2_2-1', 0, ar_total.VIDARP, time_animacao, 0, '', '', true),
+                    animarNumeroBRL('#smallbox2_2-2', 0, (ar_total.VIDA > 0 ? ((ar_total.VIDARP) / ar_total.VIDA * 100) : 0), time_animacao, 2, 'Recuperadas Parcial(<b>', '%</b>)', true),
+                    animarNumeroBRL('#smallbox2_3-1', 0, ar_total.VIDARD, time_animacao, 0, '', '', true),
+                    animarNumeroBRL('#smallbox2_3-2', 0, (ar_total.VIDA > 0 ? ((ar_total.VIDARD) / ar_total.VIDA * 100) : 0), time_animacao, 2, 'Recuperadas Duplicidade(<b>', '%</b>)', true),
+                    animarNumeroBRL('#smallbox2_4-1', 0, ar_total.VIDAR, time_animacao, 0, '', '', true),
+                    animarNumeroBRL('#smallbox2_4-2', 0, (ar_total.VIDA > 0 ? ((ar_total.VIDAR) / ar_total.VIDA * 100) : 0), time_animacao, 2, 'Recuperadas (<b>', '%</b>)', true),
                 ]);
 
                 //Renderiza os graficos apos a animação dos cards
@@ -305,17 +345,25 @@
                         },
                         {
                             name: 'Em Aberto',
-                            value: ar_total.VIDA - ar_total.VIDAD - ar_total.VIDAR
+                            value: ar_total.VIDA - ar_total.VIDAD - ar_total.VIDAR - ar_total.VIDARP - ar_total.VIDARD
                         },
                         {
                             name: 'Devolvido',
                             value: (ar_total.VIDAD),
                             //color: '#22c55e'
-                        }, // cor opcional por etapa
+                        },
+                        {
+                            name: 'Rec. Parcial',
+                            value: ar_total.VIDARP
+                        },
+                        {
+                            name: 'Rec. Duplic',
+                            value: ar_total.VIDARD
+                        },
                         {
                             name: 'Recuperado',
                             value: ar_total.VIDAR
-                        }
+                        },
                     ],
                     decimals: 0,
                     prefix: '',
@@ -323,9 +371,16 @@
                     colors: [
                         '#6c757d',
                         '#3c8dbc',
-                        '#dc3545',
+                        '#880e4f', // Vinho escuro
+                        '#f9a825',
                         '#3d9970',
+                        '#00695c', // Verde petróleo
+                        '#605ca8',
+                        '#007bff',
+                        '#17a2b8', // Laranja queimado
+                        '#e65100', // Laranja escuro
                     ], // opcional
+
                 });
 
 
@@ -334,23 +389,25 @@
                 criarGraficoChartsFlexible(ar_operadora, 'card_2_1', 'Desempenho Operadora', 'Vidas', 0, 'column', rows, 4);
                 criarGraficoChartsFlexible(ar_frente, 'card_3', 'Desempenho Frente', 'Vidas', 0, 'column', rows, 2);
                 criarGraficoChartsFlexible(ar_cancelado, 'card_3_1', 'Desempenho Cancelados', 'Vidas', 0, 'column', rows, 1);
-                criarGraficoChartsFlexible2(ar_fase, 'card_4', 'Desempenho por Fase', 'Vidas', 0, 'column');
+                criarGraficoChartsFlexible(ar_fase, 'card_4', 'Desempenho por Fase', 'Vidas', 0, 'column');
 
             }
 
 
-            function criarGraficoChartsFlexible(ar_dados, id, title, subtitle = 'Aberto/Recebidos', decimal = 2, tipo_grafico = 'areaspline', rows, key_coluna = 1) {
+            function criarGraficoChartsFlexible(ar_dados, id, title, subtitle = 'Aberto/Recebidos', decimal = 2, tipo_grafico = 'areaspline', rows = "", key_coluna = 1) {
 
                 // 1. Pegar as chaves e ordenar (ano-mês)
                 let keys = Object.keys(ar_dados).sort();
                 let key_ajust = keys.map(s => s.includes('->') ? s.split('->')[1].trim() : s);
                 // 2. Criar arrays separados
                 let implantado = keys.map(k => ar_dados[k].VIDA);
-                let aberto = keys.map(k => ar_dados[k].VIDA - ar_dados[k].VIDAR - ar_dados[k].VIDAD);
+                let aberto = keys.map(k => ar_dados[k].VIDA - ar_dados[k].VIDAR - ar_dados[k].VIDAD - ar_dados[k].VIDARP - ar_dados[k].VIDARD);
                 let recebido = keys.map(k => ar_dados[k].VIDAR);
+                let recebido_parcial = keys.map(k => ar_dados[k].VIDARP);
+                let recebido_duplicidade = keys.map(k => ar_dados[k].VIDARD);
                 let devolvido = keys.map(k => ar_dados[k].VIDAD);
 
-                let tooltipExtraKey = Utilitarios.pieBreakdownBy(rows, {
+                let tooltipExtraKey = (rows != "") ? Utilitarios.pieBreakdownBy(rows, {
                     keyCol: key_coluna, // DATA_IMPLANTACAO
                     groupCol: 6, // FASE
                     valueCol: 9, // recuperado
@@ -360,8 +417,8 @@
                     topN: 6, // mantém só 8 maiores por key
                     // minPct: 3  // agrupa <3% em "Outros",
                     toNumber: Utilitarios.parsePtNumber
-                });
-                console.log(tooltipExtraKey)
+                }) : [];
+
                 let series_ar = [{
                         name: 'Em aberto',
                         type: tipo_grafico,
@@ -378,8 +435,21 @@
                     },
                     {
                         name: 'Recuperadas',
-                        type: 'spline',
+                        type: 'areaspline',
                         data: recebido,
+                        prefix: '',
+                        decimals: decimal
+                    },
+                    {
+                        name: 'Rec.Dupl',
+                        type: tipo_grafico,
+                        data: recebido_duplicidade,
+                        prefix: '',
+                        decimals: decimal
+                    }, {
+                        name: 'Rec.Parcial',
+                        type: tipo_grafico,
+                        data: recebido_parcial,
                         prefix: '',
                         decimals: decimal
                     }
@@ -414,117 +484,6 @@
                     },
                     series: series_ar
                 }).build();
-            }
-
-            function criarGraficoChartsFlexible2(ar_dados, id, title, subtitle = 'Implantado/Aberto/Recuperado', decimal = 2, tipo_grafico = 'areaspline') {
-                // 1. Pegar as chaves e ordenar (ano-mês)
-                let keys = Object.keys(ar_dados).sort();
-                let key_ajust = keys.map(s => s.includes('->') ? s.split('->')[1].trim() : s);
-                // 2. Criar arrays separados
-                let implantado = keys.map(k => ar_dados[k].VIDA);
-                let aberto = keys.map(k => ar_dados[k].VIDA - ar_dados[k].VIDAR - ar_dados[k].VIDAD);
-                let recebido = keys.map(k => ar_dados[k].VIDAR);
-                let devolvido = keys.map(k => ar_dados[k].VIDAD);
-
-                const chart = new HighchartsFlexible2({
-                    container: id,
-                    title: title,
-                    subtitle: subtitle,
-                    tooltip: {
-                        decimals: 0
-                    },
-                    //seriesPerc: ['Implantadas'],
-                    colors: null,
-                    xAxis: {
-                        type: 'category',
-                        categories: key_ajust
-                    },
-                    yAxis: {
-                        title: '',
-                        min: 0
-                    },
-                    series: [{
-                            name: 'Em aberto',
-                            type: tipo_grafico,
-                            data: aberto,
-                            prefix: '',
-                            decimals: decimal
-                        },
-                        {
-                            name: 'Devolvido',
-                            type: tipo_grafico,
-                            data: devolvido,
-                            prefix: '',
-                            decimals: decimal
-                        },
-                        {
-                            name: 'Recuperadas',
-                            type: 'spline',
-                            data: recebido,
-                            prefix: '',
-                            decimals: decimal
-                        },
-                        /*{
-                             name: 'Implantadas',
-                             type: 'column',
-                             data: implantado,
-                             prefix: '',
-                             decimals: decimal
-                         }*/
-                    ]
-                }).build();
-            }
-
-            function criarGraficosRowKey(ar_dados, id, title, subtitle = 'Aberto/Em Negociação/Recebidos') {
-                // 1. Pegar as chaves e ordenar (ano-mês)
-                let keys = Object.keys(ar_dados).sort();
-                // 2. Criar arrays separados
-                let arrA = keys.map(k => ar_dados[k].A);
-                let arrI = keys.map(k => ar_dados[k].I);
-                let arrN = keys.map(k => ar_dados[k].N);
-                let arrR = keys.map(k => ar_dados[k].R);
-                let arrE = keys.map(k => (ar_dados[k].I > 0 ? (ar_dados[k].R / ar_dados[k].I * 100) : 0));
-                let configGrafico1 = {
-                    containerId: id, // ID da div onde o gráfico será renderizado
-                    title: title,
-                    subtitle: subtitle,
-                    xAxisCategories: keys,
-                    seriesData: [{
-                            name: 'Sem Acordo',
-                            type: 'column',
-                            data: arrA,
-                            decimals: 2,
-                            prefix: 'R$ ',
-                            suffix: '',
-                            position: 'left',
-                            axisGroup: 'moneyR',
-                            //axisTitle: 'Valores em Aberto(R$)'
-                        },
-                        {
-                            name: 'Com Acordo',
-                            type: 'column',
-                            data: arrN,
-                            decimals: 2,
-                            prefix: 'R$ ',
-                            suffix: '',
-                            position: 'left',
-                            axisGroup: 'moneyR2',
-                            //axisTitle: 'Valores em Aberto(R$)'
-                        },
-                        {
-                            name: 'Recuperado',
-                            type: 'column',
-                            data: arrR,
-                            decimals: 2,
-                            prefix: 'R$ ',
-                            suffix: '',
-                            position: 'right',
-                            axisGroup: 'moneyL',
-                            //axisTitle: 'Valores Recuperados(R$)'
-                        }
-                    ]
-                };
-                CriarGraficos.createHighchartsDualAxes(configGrafico1);
             }
         </script>
     @endpush
