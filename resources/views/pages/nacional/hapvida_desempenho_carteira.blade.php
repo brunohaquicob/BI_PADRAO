@@ -161,330 +161,100 @@
         </div>
 
     </div>
+    <div class="modal fade " id="hcDrillModal" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal-dialog modal-90 modal-dialog-scrollable" role="document">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white py-2">
+                    <h5 class="modal-title">Detalhes</h5>
+                    <button type="button" class="close text-white" data-dismiss="modal" aria-label="Fechar">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body p-3">
+                    <div id="hcDrillBody"></div>
+                </div>
+            </div>
+        </div>
+    </div>
 @stop
 
 @section('plugins.HighCharts', true)
 
 @once
     @push('css')
+        <style>
+            /* Header fix: centraliza e não corta, fica sticky no topo do card */
+            .hc-click-card-header {
+                position: sticky;
+                /* fica colado no topo quando rolar */
+                top: 0;
+                z-index: 2;
+
+                display: flex;
+                align-items: center;
+                /* centraliza vertical */
+                justify-content: center;
+                /* centraliza horizontal */
+
+                padding: 10px 44px;
+                /* espaço para o botão fechar dos dois lados */
+                min-height: 40px;
+                line-height: 1.2;
+                border-bottom: 1px solid rgba(0, 0, 0, .06);
+            }
+
+            /* título simples (não precisa mais de position absolute) */
+            .hc-click-card-header .hc-header-title {
+                white-space: nowrap;
+                /* evita quebrar (e “subir”) */
+                font-weight: 600;
+            }
+
+            /* botão fechar à direita, alinhado verticalmente */
+            .hc-click-card-header .btn-close {
+                position: absolute;
+                right: 10px;
+                top: 50%;
+                transform: translateY(-50%);
+                opacity: .9;
+            }
+
+            .hc-click-card-header .btn-close:hover {
+                opacity: 1;
+            }
+
+            .btn-close {
+                background: transparent;
+                border: 0;
+                width: 1.25rem;
+                height: 1.25rem;
+            }
+
+            .btn-close::before {
+                content: "×";
+                font-size: 20px;
+                line-height: 1;
+            }
+
+            .highcharts-plot-band.hc-hover-band,
+            .highcharts-series-group,
+            .highcharts-plot-background {
+                cursor: pointer !important;
+            }
+        </style>
     @endpush
     @push('js')
         <script src="https://code.highcharts.com/modules/sankey.js"></script>
         <script src="https://code.highcharts.com/modules/funnel.js"></script>
         <script src="https://code.highcharts.com/modules/series-label.js"></script>
         <script>
-            $(document).ready(function() {
-                carregarCoresGraficosHapvida();
+            window.app = {
+                routes: {
 
-                gerarSelectPicker2(".selectPickerAntigo");
-
-                $('#btnBuscarDados').click(function() {
-                    FormValidator.validar('form_filtros_pesquisa').then((isValid) => {
-                        if (isValid) {
-                            __buscarDados();
-                        }
-                    });
-
-                });
-
-            });
-
-            function __buscarDados() {
-                let idForm = 'form_filtros_pesquisa';
-                let div_retorno_sintetico = 'resultado-aba1';
-                let div_retorno_analitico = 'resultado-aba2';
-                $bt = '#btnBuscarDados';
-                startLadda($bt);
-                const requestParams = {
-                    method: 'POST',
-                    url: '{{ route('buscar.hapvida_desempenho_carteira_dados') }}',
-                    data: {},
-                    formId: idForm
-                };
-                AjaxRequest.sendRequest(requestParams).then(response => {
-                    stopLadda($bt);
-                    if (response.status) {
-                        if (response.msg != "") {
-                            //SweetAlert.info(response.msg);
-                            alertar(response.msg, '', 'info');
-                        }
-                        if (response.data.htmlDownload !== undefined && response.data.htmlDownload != '') {
-                            // Se o status for verdadeiro, então há um arquivo para download
-                            var html = response.data.htmlDownload;
-                            $('#' + div_retorno).html(response.data.htmlDownload);
-                        } else {
-                            if (response.data.tabela !== undefined && response.data.tabela != '') {
-
-                                tratarRetorno(response.data.tabela, div_retorno_sintetico);
-                            }
-                        }
-
-                    } else {
-                        SweetAlert.alertAutoClose("error", "Precisamos de sua atenção", response.msg, 20000);
-                    }
-                }).catch(error => {
-                    stopLadda($bt);
-                    alertar(error, "", "error");
-                });
-            }
-
-            document.addEventListener("DOMContentLoaded", function() {
-
-            });
-
-            async function tratarRetorno(tabela, divTabela) {
-
-                const table = await __renderDataTable(tabela, divTabela, {
-                    ordering: true,
-                    order: [
-                        [8, 'desc']
-                    ],
-                    /*externalFilters: {
-                        container: '#filtrosGraficos',
-                        columns: tabela.filtrosHeader ?? [], // ou [0,3,5] etc.
-                        globalSearch: '#buscaGlobal', // opcional
-                        colClass: 'col-12 col-sm-6 col-md-3',
-                        // keepHeader: true // manter também os selects no header
-                    }*/
-                }, undefined, true);
-
-                const dtf = new DTFiltrados(table);
-                lerRowEMontarGraficos(dtf.getArray());
-                const stop = dtf.hookFilteredRows((rows, tbl) => {
-                    if (rows.length === 0) return;
-                    lerRowEMontarGraficos(rows);
-                }, {
-                    delay: 300,
-                    alertOnEmpty: true,
-                    alertConfig: {
-                        type: "warning",
-                        title: "Precisamos de sua atenção",
-                        text: "Sem resultados para essa ultima seleção! Desmarque e tente novamente. Ou olhe na aba Sintético os valores disponiveis!",
-                        timeout: 10000
-                    }
-                });
-            }
-
-            async function lerRowEMontarGraficos(rows) {
-
-                if (rows.length === 0) {
-                    SweetAlert.alertAutoClose("info", "Precisamos de sua atenção", "Sem dados para gerar Graficos!", 5000)
-                    return true;
-                }
-                /*
-                0 "data"
-                1 "cancelamento"
-                2 "frente"
-                3 "filial"
-                4 "operadora"
-                5 "porte"
-                6 "fase"
-                7 "contratos"
-                8 "vidas"
-                9 "vidas_recuperadas"
-                10 "vidas_recuperadas_duplicidade"
-                11 "vidas_recuperadas_perc"
-                12 "vidas_recuperadas_parcial"
-                13 "vidas_recuperadas_parcial_duplicidade"
-                14 "vidas_devolvidas"
-                15 "vl_implantado"
-                16 "vl_aberto"
-                17 "vl_recuperado"
-                */
-                const ar_valores = {
-                    CON: 7,
-                    VIDA: 8,
-                    VIDAR: 9,
-                    VIDARD: 10,
-                    VIDARP: 12,
-                    VIDARPD: 13,
-                    VIDAD: 14,
-                    //VIDAA: '8-9-11',
-                    IMP: 15,
-                    IMPA: 16,
-                    IMPR: 17,
-                }
-
-                //const ar_total          = Utilitarios.sumColumnsFormula(rows, ar_valores);
-                const ar_total = Utilitarios.sumColumns(rows, ar_valores);
-                console.log(ar_total)
-                const ar_implantacao = Utilitarios.sumColumns(rows, ar_valores, 0);
-                const ar_cancelado = Utilitarios.sumColumns(rows, ar_valores, 1);
-                const ar_frente = Utilitarios.sumColumns(rows, ar_valores, 2);
-                const ar_operadora = Utilitarios.sumColumns(rows, ar_valores, 4);
-                const ar_porte = Utilitarios.sumColumns(rows, ar_valores, 5);
-                const ar_fase = Utilitarios.sumColumns(rows, ar_valores, 6);
-
-                //ATUALIZAR CARDS
-                const time_animacao = 1500;
-                //await animarNumeroBRL('#smallbox1-1', 0, ar_total.IMP, time_animacao, 2, '', '', true);
-                await Promise.all([
-                    animarNumeroBRL('#smallbox1_1-1', 0, ar_total.IMP, time_animacao, 2, '', '', true),
-                    animarNumeroBRL('#smallbox1_2-1', 0, ar_total.IMPA, time_animacao, 2, '', '', true),
-                    animarNumeroBRL('#smallbox1_2-2', 0, (ar_total.IMP > 0 ? (ar_total.IMPA / ar_total.IMP * 100) : 0), time_animacao, 2, 'Valor Aberto (<b>', '%</b>)', true),
-                    animarNumeroBRL('#smallbox1_3-1', 0, ar_total.IMPR, time_animacao, 2, '', '', true),
-                    animarNumeroBRL('#smallbox1_3-2', 0, (ar_total.IMP > 0 ? (ar_total.IMPR / ar_total.IMP * 100) : 0), time_animacao, 2, 'Valor Recuperado (<b>', '%</b>)', true),
-
-                    animarNumeroBRL('#smallbox2_1-1', 0, ar_total.VIDA, time_animacao, 0, '', '', true),
-                    animarNumeroBRL('#smallbox2_2-1', 0, ar_total.VIDARP, time_animacao, 0, '', '', true),
-                    animarNumeroBRL('#smallbox2_2-2', 0, (ar_total.VIDA > 0 ? ((ar_total.VIDARP) / ar_total.VIDA * 100) : 0), time_animacao, 2, 'Recuperadas Parcial(<b>', '%</b>)', true),
-                    animarNumeroBRL('#smallbox2_3-1', 0, ar_total.VIDARD, time_animacao, 0, '', '', true),
-                    animarNumeroBRL('#smallbox2_3-2', 0, (ar_total.VIDA > 0 ? ((ar_total.VIDARD) / ar_total.VIDA * 100) : 0), time_animacao, 2, 'Recuperadas Duplicidade(<b>', '%</b>)', true),
-                    animarNumeroBRL('#smallbox2_4-1', 0, ar_total.VIDAR, time_animacao, 0, '', '', true),
-                    animarNumeroBRL('#smallbox2_4-2', 0, (ar_total.VIDA > 0 ? ((ar_total.VIDAR) / ar_total.VIDA * 100) : 0), time_animacao, 2, 'Recuperadas (<b>', '%</b>)', true),
-                ]);
-
-                //Renderiza os graficos apos a animação dos cards
-                //FUNIL
-                CriarGraficos.createHighchartsFunnel({
-                    containerId: 'card_1',
-                    title: '',
-                    data: [{
-                            name: 'Implantado',
-                            value: ar_total.VIDA
-                        },
-                        {
-                            name: 'Em Aberto',
-                            value: ar_total.VIDA - ar_total.VIDAD - ar_total.VIDAR - ar_total.VIDARP - ar_total.VIDARD
-                        },
-                        {
-                            name: 'Devolvido',
-                            value: (ar_total.VIDAD),
-                            //color: '#22c55e'
-                        },
-                        {
-                            name: 'Rec. Parcial',
-                            value: ar_total.VIDARP
-                        },
-                        {
-                            name: 'Rec. Duplic',
-                            value: ar_total.VIDARD
-                        },
-                        {
-                            name: 'Recuperado',
-                            value: ar_total.VIDAR
-                        },
-                    ],
-                    decimals: 0,
-                    prefix: '',
-                    suffix: '',
-                    colors: [
-                        '#6c757d',
-                        '#3c8dbc',
-                        '#880e4f', // Vinho escuro
-                        '#f9a825',
-                        '#3d9970',
-                        '#00695c', // Verde petróleo
-                        '#605ca8',
-                        '#007bff',
-                        '#17a2b8', // Laranja queimado
-                        '#e65100', // Laranja escuro
-                    ], // opcional
-
-                });
-
-
-                criarGraficoChartsFlexible(ar_implantacao, 'card_1_1', 'Desempenho Implantação', 'Vidas', 0, 'column', rows, 0);
-                criarGraficoChartsFlexible(ar_porte, 'card_2', 'Desempenho Porte', 'Vidas', 0, 'column', rows, 5);
-                criarGraficoChartsFlexible(ar_operadora, 'card_2_1', 'Desempenho Operadora', 'Vidas', 0, 'column', rows, 4);
-                criarGraficoChartsFlexible(ar_frente, 'card_3', 'Desempenho Frente', 'Vidas', 0, 'column', rows, 2);
-                criarGraficoChartsFlexible(ar_cancelado, 'card_3_1', 'Desempenho Cancelados', 'Vidas', 0, 'column', rows, 1);
-                criarGraficoChartsFlexible(ar_fase, 'card_4', 'Desempenho por Fase', 'Vidas', 0, 'column');
-
-            }
-
-
-            function criarGraficoChartsFlexible(ar_dados, id, title, subtitle = 'Aberto/Recebidos', decimal = 2, tipo_grafico = 'areaspline', rows = "", key_coluna = 1) {
-
-                // 1. Pegar as chaves e ordenar (ano-mês)
-                let keys = Object.keys(ar_dados).sort();
-                let key_ajust = keys.map(s => s.includes('->') ? s.split('->')[1].trim() : s);
-                // 2. Criar arrays separados
-                let implantado = keys.map(k => ar_dados[k].VIDA);
-                let aberto = keys.map(k => ar_dados[k].VIDA - ar_dados[k].VIDAR - ar_dados[k].VIDAD - ar_dados[k].VIDARP - ar_dados[k].VIDARD);
-                let recebido = keys.map(k => ar_dados[k].VIDAR);
-                let recebido_parcial = keys.map(k => ar_dados[k].VIDARP);
-                let recebido_duplicidade = keys.map(k => ar_dados[k].VIDARD);
-                let devolvido = keys.map(k => ar_dados[k].VIDAD);
-
-                let tooltipExtraKey = (rows != "") ? Utilitarios.pieBreakdownBy(rows, {
-                    keyCol: key_coluna, // DATA_IMPLANTACAO
-                    groupCol: 6, // FASE
-                    valueCol: '9+10+12', // recuperado
-                    keyTransform: k => (k.includes('->') ? k.split('->')[1].trim() : k), // pra casar com key_ajust
-                    groupTransform: g => (String(g).includes('->') ? String(g).split('->')[1].trim() : g),
-                    // Opcional:
-                    topN: 6, // mantém só 8 maiores por key
-                    // minPct: 3  // agrupa <3% em "Outros",
-                    toNumber: Utilitarios.parsePtNumber
-                }) : [];
-
-                let series_ar = [{
-                        name: 'Em aberto',
-                        type: tipo_grafico,
-                        data: aberto,
-                        prefix: '',
-                        decimals: decimal
-                    },
-                    {
-                        name: 'Devolvido',
-                        type: tipo_grafico,
-                        data: devolvido,
-                        prefix: '',
-                        decimals: decimal
-                    },
-                    {
-                        name: 'Recuperadas',
-                        type: 'areaspline',
-                        data: recebido,
-                        prefix: '',
-                        decimals: decimal
-                    },
-                    {
-                        name: 'Rec.Dupl',
-                        type: tipo_grafico,
-                        data: recebido_duplicidade,
-                        prefix: '',
-                        decimals: decimal
-                    }, {
-                        name: 'Rec.Parcial',
-                        type: tipo_grafico,
-                        data: recebido_parcial,
-                        prefix: '',
-                        decimals: decimal
-                    }
-                ];
-
-                const chart = new HighchartsFlexible2({
-                    container: id,
-                    title: title,
-                    subtitle: subtitle,
-                    tooltip: {
-                        decimals: decimal
-                    },
-                    tooltipExtraKey: tooltipExtraKey,
-                    tooltipMiniPie: {
-                        title: 'FASES COM MELHOR RECUPERAÇÃO GERAL',
-                        width: 400,
-                        height: 260,
-                        labelDistance: 12,
-                        valueFontSize: '10px',
-                        valueDecimals: decimal,
-                        percentDecimals: 2
-                    },
-                    //seriesPerc: ['Implantadas'],
-                    colors: null,
-                    xAxis: {
-                        type: 'category',
-                        categories: key_ajust
-                    },
-                    yAxis: {
-                        title: '',
-                        min: 0
-                    },
-                    series: series_ar
-                }).build();
-            }
+                    buscarCredor: "{{ route('buscar.hapvida_desempenho_carteira_dados') }}"
+                },
+            };
         </script>
+        <script src="{{ asset('js/scripts_blades_hapvida/dash_painel_retencao.js') }}?v={{ time() }}"></script>
     @endpush
 @endonce
