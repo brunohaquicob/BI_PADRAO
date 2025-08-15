@@ -222,7 +222,6 @@ async function lerRowEMontarGraficos(rows) {
 
 }
 
-
 function criarGraficoChartsFlexible(ar_dados, id, title, subtitle = 'Aberto/Recebidos', decimal = 2, tipo_grafico = 'areaspline', rows = "", key_coluna = 1) {
 
     // 1. Pegar as chaves e ordenar (ano-mês)
@@ -440,7 +439,7 @@ function graficoNovo(ar_dados, id, title, subtitle = 'Aberto/Recebidos', decimal
             rows: Array.isArray(rowsKey) ? rowsKey : [],
             extra: extraKey,
             opts: {
-                pieTitle: 'FASES COM MELHOR RECUPERAÇÃO',
+                pieTitle: 'FASES COM MELHOR RECUPERAÇÃO GERAL',
                 pieHeight: 280,
                 tableMaxHeight: 500
             }
@@ -594,9 +593,9 @@ function buildDrilldownHTML({
         } : b;
     }, null);
 
-    const infoBox = (color, title, big, small) => `
+    const infoBox = (color, title, big, small, icon = 'chart-line') => `
                 <div class="info-box mb-2" title="${small || ''}">
-                <span class="info-box-icon bg-${color}" style="min-width:44px"><i class="fas fa-chart-line"></i></span>
+                <span class="info-box-icon bg-${color}" style="min-width:44px"><i class="fas fa-${icon}"></i></span>
                 <div class="info-box-content" style="line-height:1.1">
                     <span class="info-box-text text-truncate" style="max-width:240px">${title}</span>
                     <span class="info-box-number" style="font-size:1.05rem">${big}</span>
@@ -612,14 +611,14 @@ function buildDrilldownHTML({
     const loRec = pickMin(rows, 'qtd_contratos_n_acionados');
 
     const leftCards = `
-                    ${hiImpl ? infoBox('primary', 'Vidas implantadas', fmtNum(hiImpl.v), hiImpl.row.group || '') : ''}
-                    ${hiAberto ? infoBox('warning', 'Vidas recuperadas', fmtNum(hiAberto.v), hiAberto.row.group || '') : ''}
-                    ${hiTkt ? infoBox('warning', 'Recuperações com duplicidade', fmtNum(hiTkt.v), hiTkt.row.group || '') : ''}
+                    ${hiImpl ? infoBox('primary', 'Vidas implantadas', fmtNum(hiImpl.v), hiImpl.row.group || '', 'heart') : ''}
+                    ${hiAberto ? infoBox('warning', 'Vidas recuperadas', fmtNum(hiAberto.v), hiAberto.row.group || '', 'hand-holding-heart') : ''}
+                    ${hiTkt ? infoBox('warning', 'Recuperações com duplicidade', fmtNum(hiTkt.v), hiTkt.row.group || '', 'hand-holding-heart') : ''}
                 `;
     const rightCards = `
-                    ${hiRecVl ? infoBox('success', 'Contratos', fmtNum(hiRecVl.v), hiRecVl.row.group || '') : ''}
-                    ${hiRec ? infoBox('success', 'Contratos acionados %', fmtNum(hiRec.v), hiRec.row.group || '') : ''}
-                    ${loRec ? infoBox('danger', 'Contratos não acionados %', fmtNum(loRec.v), loRec.row.group || '') : ''}
+                    ${hiRecVl ? infoBox('success', 'Contratos', fmtNum(hiRecVl.v), hiRecVl.row.group || '', 'id-badge') : ''}
+                    ${hiRec ? infoBox('success', 'Contratos acionados %', fmtNum(hiRec.v), hiRec.row.group || '', 'id-badge') : ''}
+                    ${loRec ? infoBox('danger', 'Contratos não acionados %', fmtNum(loRec.v), loRec.row.group || '', 'id-badge') : ''}
                 `;
 
     // colunas
