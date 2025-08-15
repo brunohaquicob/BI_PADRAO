@@ -1409,12 +1409,16 @@ class HighchartsFlexible3 {
                 legend: false, nameMaxChars: 6, outsideDistance: 12, insideDistance: -34
             },
 
-            // mantemos plotOptions para marker etc (sem eventos de click aqui)
             plotOptions: {
                 series: { marker: { symbol: 'circle', fillColor: 'var(--highcharts-background-color,#fff)', enabled: true, radius: 2.5, lineWidth: 1, lineColor: null } }
             },
 
-            series: []
+            series: [],
+            hoverCategoryHighlight: {
+                enabled: true,
+                color: 'rgba(255,140,0,0.12)', // cor do retângulo de hover
+                zIndex: 4                      // acima do fundo, atrás das colunas
+            },
         }, options);
 
         this._uid = Math.random().toString(36).slice(2);
@@ -1445,6 +1449,7 @@ class HighchartsFlexible3 {
         if (!target) { console.error('HighchartsFlexible3: container não encontrado'); return null; }
 
         this.chart = Highcharts.chart(target, cfg);
+        this._bindHoverHighlight();
 
         // limpar mini-pie ao esconder o tooltip (apenas no hover nativo)
         if (showHoverSummary && mode === 'hover-native') {
@@ -1582,6 +1587,79 @@ class HighchartsFlexible3 {
             }
         };
     }
+
+    _bindHoverHighlight() {
+        const { chart } = this;
+        const opt = this.options.hoverCategoryHighlight || {};
+        if (!opt.enabled) return;
+
+        const xType = this.options?.xAxis?.type || 'category';
+        if (xType !== 'category') return;
+
+        const xa = chart.xAxis[0];
+        if (!xa) return;
+
+        // categorias (ou ticks) atuais
+        const cats = xa.categories || [];
+        if (!cats.length) return;
+
+        const BAND_ID = `hc-hover-band-${this._uid}`;
+        let lastIdx = null;
+
+        const insidePlot = (e) =>
+            e.chartX >= chart.plotLeft && e.chartX <= chart.plotLeft + chart.plotWidth &&
+            e.chartY >= chart.plotTop && e.chartY <= chart.plotTop + chart.plotHeight;
+
+        function indexFromMouse(e) {
+            // Tenta 1: toValue com coordenada relativa ao plot
+            let xVal = xa.toValue(e.chartX - chart.plotLeft, true);
+            if (!isFinite(xVal)) {
+                // Tenta 2: toValue com coordenada absoluta do container
+                xVal = xa.toValue(e.chartX, false);
+            }
+            if (isFinite(xVal)) {
+                return Math.max(0, Math.min(Math.round(xVal), cats.length - 1));
+            }
+
+            // Fallback: escolhe o tick mais próximo pela distância em pixels
+            const ticks = xa.tickPositions || cats.map((_, i) => i);
+            let best = 0, bestDist = Infinity;
+            for (let i = 0; i < ticks.length; i++) {
+                const px = xa.toPixels(ticks[i], true); // relativo ao plotBox
+                const dist = Math.abs(px - (e.chartX - chart.plotLeft));
+                if (dist < bestDist) { bestDist = dist; best = i; }
+            }
+            return Math.max(0, Math.min(best, cats.length - 1));
+        }
+
+        Highcharts.addEvent(chart.container, 'mousemove', (domEvt) => {
+            const e = chart.pointer.normalize(domEvt);
+            if (!insidePlot(e)) return;
+
+            const idx = indexFromMouse(e);
+            console.debug('hover idx', idx, 'cat=', cats[idx]);
+            if (idx === lastIdx) return;
+            lastIdx = idx;
+
+            // troca o plotBand
+            xa.removePlotBand(BAND_ID);
+            xa.addPlotBand({
+                id: BAND_ID,
+                from: idx - 0.5,
+                to: idx + 0.5,
+                color: opt.color || 'rgba(51,92,173,0.12)',
+                zIndex: opt.zIndex ?? 4,
+                className: 'hc-hover-band' // pra estilizar via CSS se quiser
+            });
+        });
+
+        const clear = () => { xa.removePlotBand(BAND_ID); lastIdx = null; };
+        Highcharts.addEvent(chart.container, 'mouseleave', clear);
+        Highcharts.addEvent(chart.tooltip, 'hide', clear);
+        Highcharts.addEvent(chart, 'destroy', clear);
+    }
+
+
 
     _buildHighchartsTooltip() {
         // fallback: tooltip simples nativo
