@@ -611,14 +611,14 @@ function buildDrilldownHTML({
     const loRec = pickMin(rows, 'qtd_contratos_n_acionados');
 
     const leftCards = `
-                    ${hiImpl ? infoBox('primary', 'Vidas implantadas', fmtNum(hiImpl.v), hiImpl.row.group || '', 'heart') : ''}
-                    ${hiAberto ? infoBox('warning', 'Vidas recuperadas', fmtNum(hiAberto.v), hiAberto.row.group || '', 'hand-holding-heart') : ''}
-                    ${hiTkt ? infoBox('warning', 'Recuperações com duplicidade', fmtNum(hiTkt.v), hiTkt.row.group || '', 'hand-holding-heart') : ''}
+                    ${hiImpl ? infoBox('primary', 'Top Vidas implantadas', fmtNum(hiImpl.v), hiImpl.row.group || '', 'heart') : ''}
+                    ${hiAberto ? infoBox('warning', 'Top Vidas recuperadas', fmtNum(hiAberto.v), hiAberto.row.group || '', 'hand-holding-heart') : ''}
+                    ${hiTkt ? infoBox('warning', 'Top Recuperações com duplicidade', fmtNum(hiTkt.v), hiTkt.row.group || '', 'hand-holding-heart') : ''}
                 `;
     const rightCards = `
-                    ${hiRecVl ? infoBox('success', 'Contratos', fmtNum(hiRecVl.v), hiRecVl.row.group || '', 'id-badge') : ''}
-                    ${hiRec ? infoBox('success', 'Contratos acionados %', fmtNum(hiRec.v), hiRec.row.group || '', 'id-badge') : ''}
-                    ${loRec ? infoBox('danger', 'Contratos não acionados %', fmtNum(loRec.v), loRec.row.group || '', 'id-badge') : ''}
+                    ${hiRecVl ? infoBox('success', 'Top Contratos', fmtNum(hiRecVl.v), hiRecVl.row.group || '', 'id-badge') : ''}
+                    ${hiRec ? infoBox('success', 'Top Contratos acionados %', fmtNum(hiRec.v), hiRec.row.group || '', 'id-badge') : ''}
+                    ${loRec ? infoBox('danger', 'Top Contratos não acionados %', fmtNum(loRec.v), loRec.row.group || '', 'id-badge') : ''}
                 `;
 
     // colunas
