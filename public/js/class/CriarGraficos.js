@@ -1599,49 +1599,115 @@ class HighchartsFlexible3 {
         const xa = chart.xAxis[0];
         if (!xa) return;
 
-        // categorias (ou ticks) atuais
         const cats = xa.categories || [];
         if (!cats.length) return;
+
+        const container = chart.container;
+        if (!container) return;
+
+        // evita duplo-bind ao recriar
+        if (container.dataset.hcHoverBound === '1') return;
+        container.dataset.hcHoverBound = '1';
 
         const BAND_ID = `hc-hover-band-${this._uid}`;
         let lastIdx = null;
 
+        // 1) cursor + title nos elementos principais
+        container.style.cursor = 'pointer';
+        container.setAttribute('title', 'Clique para mais detalhes');
+        container.setAttribute('role', 'button');
+        container.setAttribute('aria-label', 'Clique para mais detalhes');
+
+        if (chart.plotBackground) {
+            chart.plotBackground.css({ cursor: 'pointer' });
+            chart.plotBackground.element.setAttribute('title', 'Clique para mais detalhes');
+        }
+        if (chart.seriesGroup) {
+            chart.seriesGroup.css({ cursor: 'pointer' });
+            chart.seriesGroup.element.setAttribute('title', 'Clique para mais detalhes');
+        }
+
+        // 2) Tooltip BS4 que segue o mouse (opcional: se jQuery+BS4 estiverem presentes)
+        let tipEl = null, $tip = null, tipVisible = false;
+        const hasBSTooltip = !!(window.jQuery && jQuery.fn && jQuery.fn.tooltip);
+        if (hasBSTooltip) {
+            tipEl = document.createElement('div');
+            tipEl.className = 'hc-cursor-tip';
+            Object.assign(tipEl.style, {
+                position: 'absolute',
+                width: '1px',
+                height: '1px',
+                pointerEvents: 'none',
+                zIndex: '9999',
+                left: '0px',
+                top: '0px'
+            });
+            document.body.appendChild(tipEl);
+            $tip = jQuery(tipEl)
+                .attr({
+                    'data-toggle': 'tooltip',
+                    'data-placement': 'top',
+                    'data-original-title': 'Clique para mais detalhes'
+                })
+                .tooltip({ container: 'body', trigger: 'manual' });
+        }
+        const showTipAt = (pageX, pageY) => {
+            if (!$tip) return;
+            tipEl.style.left = pageX + 'px';
+            tipEl.style.top = (pageY - 8) + 'px'; // um pouco acima do cursor
+            if (!tipVisible) { $tip.tooltip('show'); tipVisible = true; }
+            else { $tip.tooltip('update'); }
+        };
+        const hideTip = () => { if ($tip && tipVisible) { $tip.tooltip('hide'); tipVisible = false; } };
+
+        // utilitários
         const insidePlot = (e) =>
             e.chartX >= chart.plotLeft && e.chartX <= chart.plotLeft + chart.plotWidth &&
             e.chartY >= chart.plotTop && e.chartY <= chart.plotTop + chart.plotHeight;
 
-        function indexFromMouse(e) {
-            // Tenta 1: toValue com coordenada relativa ao plot
+        const indexFromMouse = (e) => {
+            // (1) relativo ao plot
             let xVal = xa.toValue(e.chartX - chart.plotLeft, true);
             if (!isFinite(xVal)) {
-                // Tenta 2: toValue com coordenada absoluta do container
+                // (2) absoluto
                 xVal = xa.toValue(e.chartX, false);
             }
             if (isFinite(xVal)) {
                 return Math.max(0, Math.min(Math.round(xVal), cats.length - 1));
             }
-
-            // Fallback: escolhe o tick mais próximo pela distância em pixels
+            // (3) fallback: tick mais próximo
             const ticks = xa.tickPositions || cats.map((_, i) => i);
             let best = 0, bestDist = Infinity;
             for (let i = 0; i < ticks.length; i++) {
-                const px = xa.toPixels(ticks[i], true); // relativo ao plotBox
+                const px = xa.toPixels(ticks[i], true);
                 const dist = Math.abs(px - (e.chartX - chart.plotLeft));
                 if (dist < bestDist) { bestDist = dist; best = i; }
             }
             return Math.max(0, Math.min(best, cats.length - 1));
-        }
+        };
 
-        Highcharts.addEvent(chart.container, 'mousemove', (domEvt) => {
+        // 3) Hover: highlight + cursor + tooltip que segue o mouse
+        const onMove = (domEvt) => {
             const e = chart.pointer.normalize(domEvt);
-            if (!insidePlot(e)) return;
+
+            // cursor sempre coerente
+            const inPlot = insidePlot(e);
+            container.style.cursor = inPlot ? 'pointer' : 'default';
+
+            if (!inPlot) {
+                xa.removePlotBand(BAND_ID);
+                lastIdx = null;
+                hideTip();
+                return;
+            }
+
+            // mostra tooltip na posição do cursor (se BS4 estiver ativo)
+            showTipAt(domEvt.pageX, domEvt.pageY);
 
             const idx = indexFromMouse(e);
-            console.debug('hover idx', idx, 'cat=', cats[idx]);
             if (idx === lastIdx) return;
             lastIdx = idx;
 
-            // troca o plotBand
             xa.removePlotBand(BAND_ID);
             xa.addPlotBand({
                 id: BAND_ID,
@@ -1649,17 +1715,38 @@ class HighchartsFlexible3 {
                 to: idx + 0.5,
                 color: opt.color || 'rgba(51,92,173,0.12)',
                 zIndex: opt.zIndex ?? 4,
-                className: 'hc-hover-band' // pra estilizar via CSS se quiser
+                className: 'hc-hover-band'
             });
-        });
 
-        const clear = () => { xa.removePlotBand(BAND_ID); lastIdx = null; };
-        Highcharts.addEvent(chart.container, 'mouseleave', clear);
+            // garante que o próprio retângulo tenha "mãozinha" e title
+            const bands = xa.plotLinesAndBands || [];
+            const bandObj = bands.find(b => b.options && b.options.id === BAND_ID);
+            if (bandObj && bandObj.svgElem && bandObj.svgElem.element) {
+                bandObj.svgElem.css({ cursor: 'pointer' });
+                bandObj.svgElem.element.setAttribute('title', 'Clique para mais detalhes');
+            }
+        };
+
+        const clear = () => {
+            xa.removePlotBand(BAND_ID);
+            lastIdx = null;
+            container.style.cursor = 'default';
+            hideTip();
+        };
+
+        Highcharts.addEvent(container, 'mousemove', onMove);
+        Highcharts.addEvent(container, 'mouseleave', clear);
         Highcharts.addEvent(chart.tooltip, 'hide', clear);
-        Highcharts.addEvent(chart, 'destroy', clear);
+        Highcharts.addEvent(chart, 'destroy', () => {
+            clear();
+            if ($tip) {
+                try { $tip.tooltip('dispose'); } catch (_) { }
+                if (tipEl && tipEl.parentNode) tipEl.parentNode.removeChild(tipEl);
+                $tip = null; tipEl = null;
+            }
+            delete container.dataset.hcHoverBound;
+        });
     }
-
-
 
     _buildHighchartsTooltip() {
         // fallback: tooltip simples nativo

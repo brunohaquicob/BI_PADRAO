@@ -270,6 +270,12 @@
                 font-size: 20px;
                 line-height: 1;
             }
+
+            .highcharts-plot-band.hc-hover-band,
+            .highcharts-series-group,
+            .highcharts-plot-background {
+                cursor: pointer !important;
+            }
         </style>
     @endpush
     @push('js')

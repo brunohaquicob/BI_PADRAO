@@ -729,7 +729,7 @@ return [
                 [
                     'type' => 'css',
                     'asset' => true,
-                    'location' => 'css/custons.css',
+                    'location' => 'css/custons.css' . '?v=' . uniqid(),
                 ],
             ]
         ],
@@ -739,17 +739,17 @@ return [
                 [
                     'type' => 'js',
                     'asset' => true,
-                    'location' => 'js/class/Tabela.js',
+                    'location' => 'js/class/Tabela.js' . '?v=' . uniqid(),
                 ],
                 [
                     'type' => 'js',
                     'asset' => true,
-                    'location' => 'js/class/Utilitarios.js',
+                    'location' => 'js/class/Utilitarios.js' . '?v=' . uniqid(),
                 ],
                 [
                     'type' => 'js',
                     'asset' => true,
-                    'location' => 'js/class/CriarGraficos.js',
+                    'location' => 'js/class/CriarGraficos.js' . '?v=' . uniqid(),
                 ],
                 [
                     'type' => 'js',
