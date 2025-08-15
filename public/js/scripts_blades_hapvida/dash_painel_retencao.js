@@ -691,7 +691,7 @@ function buildDrilldownHTML({
     },
     {
         key: 'pct_contrato_acionado',
-        label: '%Crt.Acinado',
+        label: '%Crt.Acionado',
         type: 'percent',
         align: 'text-center'
     },
