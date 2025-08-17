@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Controllers\Querys\JallQueryExecutor;
 use App\Http\Controllers\Utilitarios\ControllerUtils;
+use App\Models\Empresa;
 use Illuminate\Support\Facades\Auth;
 use App\Models\Permissao\Role;
 use App\Models\Permissao\RouteView;
@@ -236,7 +237,19 @@ class PagesController extends Controller {
     public function usuario_cadastro() {
         $users = User::all();
         $roles = Role::all();
-        return view('pages.usuarios.cadastro_usuario', compact('users', 'roles'));
+
+        $routeName  = Route::currentRouteName();
+        $nameView   = RouteView::where('route_name', $routeName)->first();
+        $nameView   = $nameView->name;
+
+        $dadosGrupo = ControllerUtils::excutarChamadaApiAqc('get_credor_grupo', "aqc_bi_credores", ["and_where" => ""], $time, true);
+        $grupoCredor = $dadosGrupo['dados'] ?: [];
+        
+        $empresas = Empresa::where('emp_ativo', 'S')
+            ->orderBy('emp_nome')
+            ->get(['emp_codigo', 'emp_nome']);
+
+        return view('pages.usuarios.cadastro_usuario', compact('users', 'roles', 'nameView', 'grupoCredor', 'empresas'));
     }
 
     public function acessos_cadastro() {

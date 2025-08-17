@@ -46,6 +46,9 @@ if (!app()->runningInConsole()) {
             Route::put('/users/{id}', [UserController::class, 'update'])->name('users.update');
             Route::delete('/users/{id}', [UserController::class, 'destroy'])->name('users.destroy');
             Route::get('/users/{id}/edit', [UserController::class, 'edit'])->name('users.edit');
+            Route::get('/usuarios/table', [UserController::class, 'tableFull'])
+                ->name('usuario.table');
+
 
             Route::post('/user-views/ajax', [UserController::class, 'getUsuario'])->name('usuario.ajax');
             Route::post('/user-views/update', [UserController::class, 'updateUsuario'])->name('usuario.ajax.editar');

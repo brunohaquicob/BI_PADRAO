@@ -75,4 +75,16 @@ class User extends Authenticatable {
     public function empresas() {
         return $this->belongsToMany(Empresa::class, 'user_empresa', 'use_fk_id_user', 'use_fk_emp_empresa');
     }
+
+    public function gruposAqc() {
+        return $this->hasMany(UserGrupoAqc::class, 'uga_fk_id_user', 'id');
+    }
+
+    // accessor “pronto”:
+    protected $appends = ['grupos_aqc_codigos'];
+    // $codigos = $user->gruposAqc->pluck('uga_fk_bbcg_codigo'); // 
+    public function getGruposAqcCodigosAttribute() {
+        // relacionamento (eager se você der ->load('gruposAqc'))
+        return $this->gruposAqc()->pluck('uga_fk_bbcg_codigo')->toArray();
+    }
 }

@@ -1,10 +1,11 @@
 @extends('adminlte::page')
 
-@section('title', 'Usuários')
+@section('title', $nameView)
 
 @section('content_header')
-    <h4 class="w100perc text-center">Configurações de Usuários</h4>
+    <h4 class="w100perc text-center">{{ $nameView }}</h4>
 @stop
+
 
 @section('content')
     <div class="card">
@@ -17,44 +18,7 @@
             </div>
         </div>
         <div class="card-body">
-            <table class="dataTablePadrao" id="tabelaUsuario">
-                <thead>
-                    <tr class="text-center">
-                        <th>Código</th>
-                        <th>Nome</th>
-                        <th>E-mail</th>
-                        <th>Grupo</th>
-                        <th>Situação</th>
-                        <th>Ações</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach ($users as $user)
-                        <tr>
-                            <td class="text-center">{{ $user->id }}</td>
-                            <td>{{ $user->name }}</td>
-                            <td>{{ $user->email }}</td>
-                            <td class="text-center">{{ $user->role->name }}</td>
-                            <td class="text-center">
-                                @if ($user->active == 'S')
-                                    Ativo
-                                @elseif ($user->active == 'N')
-                                    Desativado
-                                @elseif ($user->active == 'B')
-                                    Bloqueado
-                                @else
-                                    Outro valor
-                                @endif
-                            </td>
-
-                            <td class="text-center">
-                                <button type="btn" class="btn btn-warning edit-user" data-id="{{ $user->id }}" data-name="{{ $user->name }}" title="Editar Dados"><i class="fas fa-user-edit"></i></button>&nbsp&nbsp
-                                <button type="btn" class="btn btn-info btn-reset-password" data-id="{{ $user->id }}" data-name="{{ $user->name }}" title="Alterar Senha"><i class="fas fa-unlock-alt"></i></button>
-                            </td>
-                        </tr>
-                    @endforeach
-                </tbody>
-            </table>
+            <div id="usuariosTableWrap"></div>
         </div>
     </div>
 
@@ -85,6 +49,22 @@
                 @endforeach
             </select>
         </div>
+        <div class="form-group">
+            <label for="role">Empresa AQC</label>
+            <select name="empresa[]" id="empresa" class="form-control selectpickerNovo" required>
+                @foreach ($empresas as $empresa)
+                    <option value="{{ $empresa->emp_codigo }}">{{ $empresa->emp_nome }}</option>
+                @endforeach
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="role">Grupo Credor AQC</label>
+            <select name="grupo_credor[]" id="grupo_credor" class="form-control selectpickerNovo" multiple>
+                @foreach ($grupoCredor as $credor)
+                    <option value="{{ $credor['col1'] }}">{{ $credor['col2'] }}</option>
+                @endforeach
+            </select>
+        </div>
     </x-modalpadrao-component>
     <!-- Modal de Editar de Usuário -->
     <x-modalpadrao-component id="modalEditar" title="Editar Usuário" size="lg" color="primary" showSaveButton="S" showUpdateButton="N" showCancelButton="S">
@@ -99,6 +79,24 @@
         <div class="form-group">
             <label for="role">Grupo</label>
             <select name="permissao" id="editarRole" class="form-control" required></select>
+        </div>
+
+        <div class="form-group">
+            <label for="editarEmpresa">Empresa</label>
+            <select name="empresa[]" id="editarEmpresa" class="form-control selectpickerNovo" multiple>
+                @foreach ($empresas as $empresa)
+                    <option value="{{ $empresa->emp_codigo }}">{{ $empresa->emp_nome }}</option>
+                @endforeach
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="editarGrupoCredor">Grupo Credor Acesso AQC</label>
+            <select name="grupo_credor[]" id="editarGrupoCredor" class="form-control selectpickerNovo" multiple>
+                @foreach ($grupoCredor as $credor)
+                    <option value="{{ $credor['col1'] }}">{{ $credor['col2'] }}</option>
+                @endforeach
+            </select>
         </div>
         <div class="form-group text-center">
             <div class="btn-group" data-toggle="buttons">
@@ -134,15 +132,19 @@
 @section('js')
     <script>
         $(function() {
+            gerarSelectPicker2('.selectpickerNovo');
+
+            // carrega na abertura da página
+            loadTabelaUsuarios();
             //RESET
-            $('.btn-reset-password').click(function() {
+            $(document).on('click', '.btn-reset-password', function() {
                 let id = $(this).data('id');
                 let nome = $(this).data('name');
                 $("#modalEditarSenhaSave").data('id_reset', id);
                 $("#modalEditarSenhaSave").data('reset', 'S');
                 $('#modalEditarSenhaTitle').html('ALTERAR SENHA DE: <b>' + nome + '</b>');
                 abrirModal('modalEditarSenha', true);
-            })
+            });
             $('#modalEditarSenhaSave').click(function() {
                 let id = $(this).data('id_reset');
                 let reset = $(this).data('reset');
@@ -150,13 +152,17 @@
             })
             //Novo
             $('#btnNovoUsuario').click(function() {
+                // limpa selects múltiplos
+                $('#empresa').selectpicker('deselectAll').selectpicker('refresh');
+                $('#grupo_credor').selectpicker('deselectAll').selectpicker('refresh');
                 abrirModal('modalUsuario', true);
-            })
+            });
+
             $('#modalUsuarioSave').click(function() {
                 cadastroUsuario('modalUsuario');
             });
             //EDITAR
-            $('.edit-user').click(function() {
+            $(document).on('click', '.edit-user', function() {
                 let id = $(this).data('id');
                 let requestParams = {
                     method: 'POST',
@@ -171,18 +177,22 @@
                         var user = response.data.user;
                         var roles = response.data.roles;
                         var userRole = response.data.userRole;
-                        // Preencha os campos da modal com os dados do usuário
+                        var userEmpresas = (response.data.userEmpresas || []).map(Number);
+                        var userGruposAqc = (response.data.userGruposAqc || []).map(Number);
+
+                        // Campos básicos
                         $('#editarName').val(user.name);
                         $('#editarEmail').val(user.email);
-                        $('#editarRole').val(userRole.id);
 
-                        // Atualize as opções do select de grupos (roles)
+                        // Roles (como você já fazia)
                         $('#editarRole').empty();
-                        $.each(roles, function(index, role) {
-                            var selected = (role.id === userRole.id) ? 'selected' : '';
-                            $('#editarRole').append('<option value="' + role.id + '" ' + selected + '>' +
-                                role.name + '</option>');
+                        $.each(roles, function(_, role) {
+                            $('#editarRole').append(
+                                '<option value="' + role.id + '" ' + (role.id === userRole.id ? 'selected' : '') + '>' + role.name + '</option>'
+                            );
                         });
+
+                        // Situação (como você já fazia)
                         $("input[name='situacao_usuario']").each(function() {
                             if ($(this).val() === user.active) {
                                 $(this).closest("label").addClass("active");
@@ -192,11 +202,22 @@
                                 $(this).prop("checked", false);
                             }
                         });
+
+                        // >>> Empresas (multi)
+                        // garante que o selectpicker está limpo antes de setar
+                        $('#editarEmpresa').selectpicker('deselectAll');
+                        $('#editarEmpresa').selectpicker('val', userEmpresas).selectpicker('refresh');
+
+                        // >>> Grupo Credor (multi, opcional)
+                        $('#editarGrupoCredor').selectpicker('deselectAll');
+                        $('#editarGrupoCredor').selectpicker('val', userGruposAqc).selectpicker('refresh');
+
                         $("#modalEditarSave").data('id', id);
                         abrirModal('modalEditar', false);
                     }
                 });
-            })
+            });
+
 
             $('#modalEditarSave').click(function() {
                 let id = $(this).data('id');
@@ -218,6 +239,7 @@
                     if (response.status === true) {
                         fecharModal(idModal);
                         SweetAlert.alertAutoClose("success", "Feito", response.msg);
+                        loadTabelaUsuarios();
                     } else {
                         SweetAlert.alertAutoClose("warning", "Precisamos de sua atenção", response.msg, 20000);
                     }
@@ -226,5 +248,51 @@
                 });
             }
         })
+
+        function loadTabelaUsuarios() {
+            const wrapSel = '#usuariosTableWrap';
+            const url = '{{ route('usuario.table') }}';
+
+            try {
+                // 1) Se já existe DataTable, destrói e remove o wrapper
+                if ($.fn.DataTable && $.fn.DataTable.isDataTable('#tabelaUsuario')) {
+                    $('#tabelaUsuario').DataTable().destroy(true); // true = remove DOM gerado
+                }
+            } catch (e) {
+                // ignora qualquer erro de estado aqui
+            }
+
+            // 2) placeholder
+            $(wrapSel).html('<div class="text-center p-3 text-muted">Carregando...</div>');
+
+            // 3) carrega a TABELA INTEIRA (o parcial _table.blade.php)
+            $.ajax({
+                    url,
+                    method: 'GET',
+                    cache: false
+                })
+                .done(function(html) {
+                    // injeta HTML novo (vem <table id="tabelaUsuario">...</table>)
+                    $(wrapSel).html(html);
+
+                    // 4) inicializa de novo
+                    const $tbl = $('#tabelaUsuario');
+                    if ($tbl.length) {
+                        $tbl.DataTable({
+                            // coloque as mesmas opções que você usa para "dataTablePadrao"
+                            pageLength: 25,
+                            order: [
+                                [0, 'asc']
+                            ],
+                            // se usar Buttons no "dom", garanta que o JS de Buttons esteja incluído
+                            // dom: 'Bfrtip', buttons: ['copy', 'excel', 'csv']
+                        });
+                    }
+                })
+                .fail(function(xhr) {
+                    console.error('Falha ao carregar a tabela', xhr.status, xhr.responseText);
+                    SweetAlert.alertAutoClose("error", "Ops", "Não foi possível carregar a lista de usuários.");
+                });
+        }
     </script>
 @stop

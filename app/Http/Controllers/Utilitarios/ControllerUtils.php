@@ -326,11 +326,13 @@ class ControllerUtils extends Controller {
             $url = "https://{$servidor}.aquicob.com.br/api.php?a={$a}&b={$b}";
             // dd($url);
             $user = Auth::user();
+            $credor_grupo = $user->gruposAqc->pluck('uga_fk_bbcg_codigo');
 
             $json_data = [
                 'emp_codigo' => $empresa->emp_fk_emp_codigo,
                 'bi_id_grupo_usuario'   => $user->role_id,
                 'bi_id_usuario'         => $user->id,
+                'bi_bbcg_codigo'        => $credor_grupo,
             ];
             if (!empty($post_data)) {
                 $json_data = array_merge($json_data, $post_data);
