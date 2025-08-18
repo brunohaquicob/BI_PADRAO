@@ -24,7 +24,7 @@ function __buscarDados() {
         method: 'POST',
         url: window.app.routes.buscarCredor,
         data: {
-            "data_cancelamento_range" : $('#dateRangePicker_check').is(':checked') ? getRangeDate('dateRangePicker') : ""
+            "data_cancelamento_range": $('#dateRangePicker_check').is(':checked') ? getRangeDate('dateRangePicker') : ""
         },
         formId: idForm
     };
@@ -466,34 +466,12 @@ function graficoNovo(ar_dados, id, title, subtitle = 'Aberto/Recebidos', decimal
         });
     }
 
-    // evita duplo-bind se recriar o gráfico
-    const containerEl = document.getElementById(id);
-    if (containerEl && containerEl.dataset.hcClickBound !== '1') {
-        containerEl.dataset.hcClickBound = '1';
-
-        Highcharts.addEvent(chart.container, 'click', function (domEvt) {
-            // normaliza e garante que o clique foi dentro da área do plot
-            const e = chart.pointer.normalize(domEvt);
-            if (e.chartX < chart.plotLeft || e.chartX > chart.plotLeft + chart.plotWidth) return;
-            if (e.chartY < chart.plotTop || e.chartY > chart.plotTop + chart.plotHeight) return;
-
-            const xa = chart.xAxis[0];
-            const cats = xa.categories || [];
-            if (!cats.length) return;
-
-            const xVal = xa.toValue(e.chartX - chart.plotLeft, true);
-            if (!isFinite(xVal)) return;
-
-            const idx = Math.max(0, Math.min(Math.round(xVal), cats.length - 1));
-            const keyLabel = cats[idx];
-
-            if (keyLabel != null) openDrillForCategory(chart, keyLabel);
-        });
-
-        // feedback visual opcional
-        chart.container.style.cursor = 'pointer';
-    }
-
+    bindChartClick(
+        id,
+        chart,
+        (keyLabel) => openDrillForCategory(chart, keyLabel),
+        'Clique para mais detalhes'
+    );
 
     // cleanup simples ao fechar a modal
     $('#hcDrillModal').on('hidden.bs.modal', function () {
@@ -502,7 +480,48 @@ function graficoNovo(ar_dados, id, title, subtitle = 'Aberto/Recebidos', decimal
 
     return chart;
 }
+function bindChartClick(containerId, chart, onCategoryClick, titleText = 'Clique para mais detalhes') {
+    const el = document.getElementById(containerId);
+    if (!el || !chart || !chart.xAxis || !chart.xAxis[0]) return;
 
+    // Se já havia um handler anterior, remove para evitar duplicidade
+    if (el._hcClickHandler) el.removeEventListener('click', el._hcClickHandler);
+
+    const handler = function (domEvt) {
+        const e = chart.pointer.normalize(domEvt);
+
+        // limita ao plot
+        if (e.chartX < chart.plotLeft || e.chartX > chart.plotLeft + chart.plotWidth) return;
+        if (e.chartY < chart.plotTop || e.chartY > chart.plotTop + chart.plotHeight) return;
+
+        const xa = chart.xAxis[0];
+        const cats = xa.categories || [];
+        if (!cats.length) return;
+
+        // mesmo cálculo que você já tinha
+        const xVal = xa.toValue(e.chartX - chart.plotLeft, true);
+        if (!isFinite(xVal)) return;
+
+        const idx = Math.max(0, Math.min(Math.round(xVal), cats.length - 1));
+        const keyLabel = cats[idx];
+
+        if (keyLabel != null) onCategoryClick(keyLabel);
+    };
+
+    // guarda e aplica
+    el._hcClickHandler = handler;
+    el.addEventListener('click', handler);
+
+    // UX
+    el.style.cursor = 'pointer';
+    el.setAttribute('title', titleText);
+
+    // se usar tooltip do Bootstrap (opcional)
+    if (typeof $ === 'function' && $.fn.tooltip) {
+        $(el).tooltip('dispose');
+        $(el).tooltip({ container: 'body' });
+    }
+}
 function calculaArrayTable(rows, keyCol = 1, groupCol = 2, ordemFaixas) {
     /*
     0 "data"
