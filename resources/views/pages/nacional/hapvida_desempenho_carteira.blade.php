@@ -37,6 +37,11 @@
                         </div>
                     @endforeach
                 </div>
+                <div class="row">
+                    <div class="col-md-3">
+                        <x-calendario-component id='dateRangePicker' event-name='dateRangeSelected' :options="[]" type='input-com-check' autoApply='false' single='N' label='Data Cancelamento' />
+                    </div>
+                </div>
                 <div class="row margem_cima20">
                     <div class="offset-md-4 col-md-4 offset-md-4 col-12">
                         <div class="form-group">

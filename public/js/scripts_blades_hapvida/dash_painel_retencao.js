@@ -23,7 +23,9 @@ function __buscarDados() {
     const requestParams = {
         method: 'POST',
         url: window.app.routes.buscarCredor,
-        data: {},
+        data: {
+            "data_cancelamento_range" : $('#dateRangePicker_check').is(':checked') ? getRangeDate('dateRangePicker') : ""
+        },
         formId: idForm
     };
     AjaxRequest.sendRequest(requestParams).then(response => {

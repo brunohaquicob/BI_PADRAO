@@ -44,11 +44,17 @@ class HapvidaController extends Controller {
             $ar_fields['rel_canal']             = 'nullable|array';
             $ar_fields['rel_tipo_importacao']   = 'nullable|array';
 
+            $ar_fields['data_cancelamento_range']   = 'nullable|array';
+            $ar_fields['data_cancelamento_range.*'] = 'date_format:Y-m-d';
+
             $dadosTratados = ControllerUtils::validateRequestObrigatorios($request, $ar_fields);
 
             $dados  = [];
-            $post   = [];
-
+            $post   = [
+                "data_cancelamento_ini" => !empty($dadosTratados['data_cancelamento_range'][0]) ? $dadosTratados['data_cancelamento_range'][0] : "",
+                "data_cancelamento_fim" => !empty($dadosTratados['data_cancelamento_range'][1]) ? $dadosTratados['data_cancelamento_range'][1] : "",
+            ];
+            
             foreach ($dadosTratados as $key => $value) {
                 $post[$key] = $value ?: "";
             }
