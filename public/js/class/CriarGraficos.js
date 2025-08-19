@@ -2986,7 +2986,7 @@ class DashMicro {
                     const pts = this.series.points || [];
                     const total = pts.reduce((s, p) => s + (p.y || 0), 0);
                     const pct = total ? (this.y / total) * 100 : 0;
-                    const valueDec = chart.valueDecimals ?? self.decimals;
+                    const valueDec = chart.decimals ?? self.decimals;
                     const percentDec = chart.percentDecimals ?? self.pctDecimals;
 
                     const valFmt = Highcharts.numberFormat(
