@@ -1131,10 +1131,11 @@ function criarGraficosRowKey(ar_dados, id, title, subtitle = 'Aberto/Em Negocia�
                 //axisTitle: 'Valores Recuperados(R$)'
             }
         ],
+        exactMax: true,
         unifyYAxis: true,                 // ativa a unificação
         unifySource: 'overall',           // 'overall' | 'group' | 'series'
-        primaryAxisGroup: 'moneyR',       // se unifySource === 'group'
-        primarySeries: ['Sem Acordo']     // se unifySource === 'series'
+        //primaryAxisGroup: 'moneyR',       // se unifySource === 'group'
+        //primarySeries: ['Sem Acordo']     // se unifySource === 'series'
     };
     CriarGraficos.createHighchartsDualAxes(configGrafico1);
 }

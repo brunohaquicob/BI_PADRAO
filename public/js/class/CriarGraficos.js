@@ -224,12 +224,14 @@ class CriarGraficos {
         const {
             containerId, title, subtitle, xAxisCategories, seriesData,
             tooltipMode = 'total', chartHeight = null,
-            // NOVOS PARÂMETROS
-            unifyYAxis = false,                  // true/false
-            unifySource = 'overall',             // 'overall' | 'group' | 'series'
-            primaryAxisGroup = null,             // usado quando unifySource === 'group'
-            primarySeries = []                   // usado quando unifySource === 'series'
+            unifyYAxis = false,
+            unifySource = 'overall',
+            primaryAxisGroup = null,
+            primarySeries = [],
+            exactMax = false        // <— NOVO
         } = config;
+
+        let tickInterval = null;
 
         // helpers locais
         const getSerieVals = (s) => (s?.data || []).map(v => Array.isArray(v) ? +v[1] : +v).filter(Number.isFinite);
@@ -261,7 +263,6 @@ class CriarGraficos {
 
         // 1.1) Calcular o max comum (opcional, inicial)
         let commonMax = null;
-        let tickInterval = null; // <-- precisa fora do bloco
         if (unifyYAxis) {
             let baseSeries = seriesData;
             if (unifySource === 'group' && primaryAxisGroup) {
@@ -272,10 +273,12 @@ class CriarGraficos {
             } // 'overall' => usa todas
 
             const rawMax = Math.max(0, ...baseSeries.flatMap(getSerieVals));
-            const padded = rawMax * 1.10;            // pequena folga
-            commonMax = niceCeil(padded);
-            if (commonMax === 0) commonMax = null;   // evita travar em zero
-            tickInterval = chooseTick(commonMax);
+            const padded = rawMax * 1.10;
+            commonMax = exactMax ? padded : niceCeil(padded);
+            if (commonMax === 0) commonMax = null;
+            // Em modo exato, não fixe tickInterval (deixe o Highcharts decidir)
+            tickInterval = exactMax ? null : chooseTick(commonMax);
+
         }
 
         // 2) Criar yAxis dinamicamente
@@ -297,11 +300,14 @@ class CriarGraficos {
                 },
                 opposite: serie.position === 'right',
                 ...(unifyYAxis && commonMax ? {
-                    max: commonMax,      // teto desejado
-                    ceiling: commonMax,  // nunca ultrapassa
-                    endOnTick: false,    // não força bater no tick
+                    max: commonMax,
+                    ceiling: commonMax,
+                    endOnTick: false,
                     startOnTick: true,
                     maxPadding: 0.02,
+                    // ↓ adicionados
+                    min: 0,                // ou use softMin: 0 se preferir flexibilidade
+                    tickAmount: 5,         // sugere ~5 divisões pra garantir labels no 1º render
                     ...(tickInterval ? { tickInterval } : {})
                 } : {})
             };
@@ -332,7 +338,7 @@ class CriarGraficos {
             }
             if (!base.length) {
                 chart.yAxis.forEach(ax => ax.update({ max: null, ceiling: null, tickInterval: null }, false));
-                chart.redraw(false);
+                chart.redraw(false);                 // <— ADD
                 return;
             }
             const arrMax = base.flatMap(s => (Array.isArray(s.yData) && s.yData.length ? s.yData : s.userOptions.data || []))
@@ -341,24 +347,26 @@ class CriarGraficos {
             const rawMax = Math.max(0, ...arrMax);
             if (!(rawMax > 0)) {
                 chart.yAxis.forEach(ax => ax.update({ max: null, ceiling: null, tickInterval: null }, false));
-                chart.redraw(false);
+                chart.redraw(false);                 // <— ADD
                 return;
             }
             const padded = rawMax * 1.10;
-            const newMax = niceCeil(padded);
-            if (chart._lastCommonMax === newMax) return;
-            chart._lastCommonMax = newMax;
-            const ti = chooseTick(newMax);
+            const newMax = exactMax ? padded : niceCeil(padded);
+            const ti = exactMax ? null : chooseTick(newMax);
             chart.yAxis.forEach(ax => ax.update({
                 max: newMax,
                 ceiling: newMax,
                 endOnTick: false,
                 startOnTick: true,
                 maxPadding: 0.02,
-                ...(ti ? { tickInterval: ti } : {})
+                min: 0,
+                tickAmount: 5,
+                ...(ti ? { tickInterval: ti } : {}),
+                ...(ax.options?.softMin === undefined ? { softMin: 0 } : {})
             }, false));
-            chart.redraw(false);
-        };
+
+            chart.redraw(false);                   // <— ADD AQUI TAMBÉM
+        }
 
         // 4) Render
         Highcharts.chart(containerId, {
@@ -368,7 +376,10 @@ class CriarGraficos {
                 panning: false,
                 height: chartHeight || undefined,
                 events: {
-                    load: function () { recalcAndApply(this); } // aplica no início
+                    load: function () {
+                        const c = this;
+                        (window.requestAnimationFrame || setTimeout)(() => recalcAndApply(c), 0); // <— ADJUST
+                    }
                 }
             },
             title: { text: title, align: 'left' },
