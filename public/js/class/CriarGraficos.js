@@ -221,16 +221,74 @@ class CriarGraficos {
 
     //Dual axes, line and column
     static createHighchartsDualAxes(config) {
-        const { containerId, title, subtitle, xAxisCategories, seriesData, tooltipMode = 'total', chartHeight = null } = config;
+        const {
+            containerId, title, subtitle, xAxisCategories, seriesData,
+            tooltipMode = 'total', chartHeight = null,
+            // NOVOS PARÂMETROS
+            unifyYAxis = false,                  // true/false
+            unifySource = 'overall',             // 'overall' | 'group' | 'series'
+            primaryAxisGroup = null,             // usado quando unifySource === 'group'
+            primarySeries = []                   // usado quando unifySource === 'series'
+        } = config;
 
-        // 1. Descobrir grupos de eixos
+        // helper: pega todos os valores numéricos de uma série
+        const getSerieVals = (s) => (s?.data || []).map(v => +v || 0).filter(v => Number.isFinite(v));
+
+        // helper: arredonda para um teto “bonito” (1,2,5×10^k)
+        const niceCeil = (n) => {
+            if (!(n > 0)) return 0;
+            const k = Math.pow(10, Math.floor(Math.log10(n)));
+            const m = n / k;
+            const step = m <= 1 ? 1 : m <= 2 ? 2 : m <= 5 ? 5 : 10;
+            return step * k;
+        };
+
+        // 1) Descobrir grupos de eixos
         const axisGroups = [];
         seriesData.forEach(s => {
             const group = s.axisGroup || 'default';
             if (!axisGroups.includes(group)) axisGroups.push(group);
         });
 
-        // 2. Criar yAxis dinamicamente (1 por grupo)
+        // 1.1) Calcular o max comum (opcional)
+        let commonMax = null;
+        let tickInterval = null; // <--- declara fora
+
+        if (unifyYAxis) {
+            let baseSeries = seriesData;
+
+            if (unifySource === 'group' && primaryAxisGroup) {
+                baseSeries = seriesData.filter(s => (s.axisGroup || 'default') === primaryAxisGroup);
+            } else if (unifySource === 'series' && primarySeries?.length) {
+                const set = new Set(primarySeries);
+                baseSeries = seriesData.filter(s => set.has(s.name));
+            } // 'overall' => usa todas
+
+            const rawMax = Math.max(0, ...baseSeries.flatMap(getSerieVals));
+            const padded = rawMax * 1.10;
+            commonMax = niceCeil(padded);
+            if (commonMax === 0) commonMax = null;
+
+            const chooseTick = (max) => {
+                const bases = [1, 2, 2.5, 5];
+                const targetTicks = 5;
+                const k = Math.pow(10, Math.floor(Math.log10(max)));
+                let best = null, bestDiff = 1e9;
+                for (const b of bases) {
+                    for (const m of [k / 10, k, k * 10]) {
+                        const step = b * m;
+                        const ticks = Math.ceil(max / step);
+                        const diff = Math.abs(ticks - targetTicks);
+                        if (diff < bestDiff) { bestDiff = diff; best = step; }
+                    }
+                }
+                return best || k;
+            };
+
+            tickInterval = chooseTick(commonMax); // <--- define aqui
+        }
+
+        // 2) Criar yAxis dinamicamente
         const yAxis = axisGroups.map((group, idx) => {
             const serie = seriesData.find(s => (s.axisGroup || 'default') === group);
             return {
@@ -247,31 +305,34 @@ class CriarGraficos {
                     text: serie.axisTitle || serie.name,
                     style: { color: Highcharts.getOptions().colors[idx] }
                 },
-                opposite: serie.position === 'right'
+                opposite: serie.position === 'right',
+                ...(commonMax ? {
+                    max: commonMax,
+                    ceiling: commonMax,
+                    endOnTick: false,
+                    startOnTick: true,
+                    maxPadding: 0.02,
+                    tickInterval
+                } : {})
             };
         });
 
-        // 3. Configurar as séries com referência ao eixo correto
+        // 3) Mapear séries para seus eixos
         const series = seriesData.map(serie => ({
             name: serie.name,
             type: serie.type || 'line',
             yAxis: axisGroups.indexOf(serie.axisGroup || 'default'),
             data: serie.data,
-            tooltip: {
-                valueSuffix: serie.format || ''
-            }
+            tooltip: { valueSuffix: serie.format || '' }
         }));
 
-        // 4. Renderizar Highcharts
+        // 4) Render
         Highcharts.chart(containerId, {
             chart: {
-                zooming: {
-                    type: '',
-                    mouseWheel: false,
-                    singleTouch: false
-                },
+                alignTicks: false,
+                zooming: { type: '', mouseWheel: false, singleTouch: false },
                 panning: false,
-                height: chartHeight || undefined // Usa se vier no config
+                height: chartHeight || undefined
             },
             title: { text: title, align: 'left' },
             subtitle: { text: subtitle, align: 'left' },
@@ -290,10 +351,10 @@ class CriarGraficos {
                         }).format(v);
 
                     let html = `<div class="panel panel-default" style="min-width:230px;margin:0;">
-                  <div class="panel-heading" style="font-weight:bold; text-align:center; padding:5px 10px;">
-                    ${this.key}
-                  </div>
-                  <div class="list-group" style="margin:0;">`;
+          <div class="panel-heading" style="font-weight:bold; text-align:center; padding:5px 10px;">
+            ${this.key}
+          </div>
+          <div class="list-group" style="margin:0;">`;
 
                     let total = 0;
                     if (tooltipMode === 'total') {
@@ -315,9 +376,9 @@ class CriarGraficos {
                         }
 
                         html += `<div class="list-group-item" style="display:flex;justify-content:space-between;align-items:center;padding:5px 10px;">
-                        <span><span style="color:${point.color}">\u25CF</span> ${point.series.name}</span>
-                        <span>&nbsp;&nbsp;<b>${prefix}${valueStr}${suffix}</b>${extra}</span>
-                        </div>`;
+            <span><span style="color:${point.color}">\u25CF</span> ${point.series.name}</span>
+            <span>&nbsp;&nbsp;<b>${prefix}${valueStr}${suffix}</b>${extra}</span>
+          </div>`;
                     });
 
                     if (tooltipMode === 'total') {
@@ -332,12 +393,12 @@ class CriarGraficos {
             legend: {
                 align: 'left',
                 verticalAlign: 'top',
-                backgroundColor:
-                    Highcharts.defaultOptions.legend.backgroundColor || 'rgba(255,255,255,0.25)'
+                backgroundColor: Highcharts.defaultOptions.legend.backgroundColor || 'rgba(255,255,255,0.25)'
             },
             series
         });
     }
+
 
     //
     /**

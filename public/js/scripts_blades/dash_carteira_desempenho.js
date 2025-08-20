@@ -1096,40 +1096,45 @@ function criarGraficosRowKey(ar_dados, id, title, subtitle = 'Aberto/Em Negocia�
         title: title,
         subtitle: subtitle,
         xAxisCategories: key_ajust,
-        seriesData: [{
-            name: 'Sem Acordo',
-            type: 'column',
-            data: arrA,
-            decimals: 2,
-            prefix: 'R$ ',
-            suffix: '',
-            position: 'left',
-            axisGroup: 'moneyR',
-            //axisTitle: 'Valores em Aberto(R$)'
-        },
-        {
-            name: 'Com Acordo',
-            type: 'column',
-            data: arrN,
-            decimals: 2,
-            prefix: 'R$ ',
-            suffix: '',
-            position: 'left',
-            axisGroup: 'moneyR2',
-            //axisTitle: 'Valores em Aberto(R$)'
-        },
-        {
-            name: 'Recuperado',
-            type: 'column',
-            data: arrR,
-            decimals: 2,
-            prefix: 'R$ ',
-            suffix: '',
-            position: 'right',
-            axisGroup: 'moneyL',
-            //axisTitle: 'Valores Recuperados(R$)'
-        }
-        ]
+        seriesData: [
+            {
+                name: 'Sem Acordo',
+                type: 'column',
+                data: arrA,
+                decimals: 2,
+                prefix: 'R$ ',
+                suffix: '',
+                position: 'left',
+                axisGroup: 'moneyR',
+                //axisTitle: 'Valores em Aberto(R$)'
+            },
+            {
+                name: 'Com Acordo',
+                type: 'column',
+                data: arrN,
+                decimals: 2,
+                prefix: 'R$ ',
+                suffix: '',
+                position: 'left',
+                axisGroup: 'moneyR2',
+                //axisTitle: 'Valores em Aberto(R$)'
+            },
+            {
+                name: 'Recuperado',
+                type: 'column',
+                data: arrR,
+                decimals: 2,
+                prefix: 'R$ ',
+                suffix: '',
+                position: 'right',
+                axisGroup: 'moneyL',
+                //axisTitle: 'Valores Recuperados(R$)'
+            }
+        ],
+        unifyYAxis: true,                 // ativa a unificação
+        unifySource: 'overall',           // 'overall' | 'group' | 'series'
+        primaryAxisGroup: 'moneyR',       // se unifySource === 'group'
+        primarySeries: ['Sem Acordo']     // se unifySource === 'series'
     };
     CriarGraficos.createHighchartsDualAxes(configGrafico1);
 }
