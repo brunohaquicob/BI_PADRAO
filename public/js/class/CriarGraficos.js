@@ -231,16 +231,25 @@ class CriarGraficos {
             primarySeries = []                   // usado quando unifySource === 'series'
         } = config;
 
-        // helper: pega todos os valores numéricos de uma série
-        const getSerieVals = (s) => (s?.data || []).map(v => +v || 0).filter(v => Number.isFinite(v));
-
-        // helper: arredonda para um teto “bonito” (1,2,5×10^k)
+        // helpers locais
+        const getSerieVals = (s) => (s?.data || []).map(v => Array.isArray(v) ? +v[1] : +v).filter(Number.isFinite);
         const niceCeil = (n) => {
             if (!(n > 0)) return 0;
             const k = Math.pow(10, Math.floor(Math.log10(n)));
             const m = n / k;
             const step = m <= 1 ? 1 : m <= 2 ? 2 : m <= 5 ? 5 : 10;
             return step * k;
+        };
+        const chooseTick = (max) => {
+            if (!(max > 0)) return null;
+            const bases = [1, 2, 2.5, 5], target = 5;
+            const k = Math.pow(10, Math.floor(Math.log10(max)));
+            let best = null, bestDiff = 1e9;
+            for (const b of bases) for (const m of [k / 10, k, k * 10]) {
+                const step = b * m, ticks = Math.ceil(max / step), diff = Math.abs(ticks - target);
+                if (diff < bestDiff) { bestDiff = diff; best = step; }
+            }
+            return best || k;
         };
 
         // 1) Descobrir grupos de eixos
@@ -250,13 +259,11 @@ class CriarGraficos {
             if (!axisGroups.includes(group)) axisGroups.push(group);
         });
 
-        // 1.1) Calcular o max comum (opcional)
+        // 1.1) Calcular o max comum (opcional, inicial)
         let commonMax = null;
-        let tickInterval = null; // <--- declara fora
-
+        let tickInterval = null; // <-- precisa fora do bloco
         if (unifyYAxis) {
             let baseSeries = seriesData;
-
             if (unifySource === 'group' && primaryAxisGroup) {
                 baseSeries = seriesData.filter(s => (s.axisGroup || 'default') === primaryAxisGroup);
             } else if (unifySource === 'series' && primarySeries?.length) {
@@ -265,27 +272,10 @@ class CriarGraficos {
             } // 'overall' => usa todas
 
             const rawMax = Math.max(0, ...baseSeries.flatMap(getSerieVals));
-            const padded = rawMax * 1.10;
+            const padded = rawMax * 1.10;            // pequena folga
             commonMax = niceCeil(padded);
-            if (commonMax === 0) commonMax = null;
-
-            const chooseTick = (max) => {
-                const bases = [1, 2, 2.5, 5];
-                const targetTicks = 5;
-                const k = Math.pow(10, Math.floor(Math.log10(max)));
-                let best = null, bestDiff = 1e9;
-                for (const b of bases) {
-                    for (const m of [k / 10, k, k * 10]) {
-                        const step = b * m;
-                        const ticks = Math.ceil(max / step);
-                        const diff = Math.abs(ticks - targetTicks);
-                        if (diff < bestDiff) { bestDiff = diff; best = step; }
-                    }
-                }
-                return best || k;
-            };
-
-            tickInterval = chooseTick(commonMax); // <--- define aqui
+            if (commonMax === 0) commonMax = null;   // evita travar em zero
+            tickInterval = chooseTick(commonMax);
         }
 
         // 2) Criar yAxis dinamicamente
@@ -306,13 +296,13 @@ class CriarGraficos {
                     style: { color: Highcharts.getOptions().colors[idx] }
                 },
                 opposite: serie.position === 'right',
-                ...(commonMax ? {
-                    max: commonMax,
-                    ceiling: commonMax,
-                    endOnTick: false,
+                ...(unifyYAxis && commonMax ? {
+                    max: commonMax,      // teto desejado
+                    ceiling: commonMax,  // nunca ultrapassa
+                    endOnTick: false,    // não força bater no tick
                     startOnTick: true,
                     maxPadding: 0.02,
-                    tickInterval
+                    ...(tickInterval ? { tickInterval } : {})
                 } : {})
             };
         });
@@ -323,8 +313,52 @@ class CriarGraficos {
             type: serie.type || 'line',
             yAxis: axisGroups.indexOf(serie.axisGroup || 'default'),
             data: serie.data,
+            axisGroup: serie.axisGroup || 'default',
+            decimals: serie.decimals ?? 0,
+            prefix: serie.prefix || '',
+            suffix: serie.suffix || '',
             tooltip: { valueSuffix: serie.format || '' }
         }));
+
+        // função local para recalcular teto considerando séries visíveis
+        const recalcAndApply = (chart) => {
+            if (!unifyYAxis) return;
+            let base = chart.series.filter(s => s.visible && !s.isInternal);
+            if (unifySource === 'group' && primaryAxisGroup) {
+                base = base.filter(s => (s.userOptions.axisGroup || 'default') === primaryAxisGroup);
+            } else if (unifySource === 'series' && Array.isArray(primarySeries) && primarySeries.length) {
+                const set = new Set(primarySeries);
+                base = base.filter(s => set.has(s.name));
+            }
+            if (!base.length) {
+                chart.yAxis.forEach(ax => ax.update({ max: null, ceiling: null, tickInterval: null }, false));
+                chart.redraw(false);
+                return;
+            }
+            const arrMax = base.flatMap(s => (Array.isArray(s.yData) && s.yData.length ? s.yData : s.userOptions.data || []))
+                .map(v => Array.isArray(v) ? +v[1] : +v)
+                .filter(Number.isFinite);
+            const rawMax = Math.max(0, ...arrMax);
+            if (!(rawMax > 0)) {
+                chart.yAxis.forEach(ax => ax.update({ max: null, ceiling: null, tickInterval: null }, false));
+                chart.redraw(false);
+                return;
+            }
+            const padded = rawMax * 1.10;
+            const newMax = niceCeil(padded);
+            if (chart._lastCommonMax === newMax) return;
+            chart._lastCommonMax = newMax;
+            const ti = chooseTick(newMax);
+            chart.yAxis.forEach(ax => ax.update({
+                max: newMax,
+                ceiling: newMax,
+                endOnTick: false,
+                startOnTick: true,
+                maxPadding: 0.02,
+                ...(ti ? { tickInterval: ti } : {})
+            }, false));
+            chart.redraw(false);
+        };
 
         // 4) Render
         Highcharts.chart(containerId, {
@@ -332,13 +366,24 @@ class CriarGraficos {
                 alignTicks: false,
                 zooming: { type: '', mouseWheel: false, singleTouch: false },
                 panning: false,
-                height: chartHeight || undefined
+                height: chartHeight || undefined,
+                events: {
+                    load: function () { recalcAndApply(this); } // aplica no início
+                }
             },
             title: { text: title, align: 'left' },
             subtitle: { text: subtitle, align: 'left' },
             credits: false,
             xAxis: [{ categories: xAxisCategories, crosshair: true }],
             yAxis,
+            plotOptions: {
+                series: {
+                    events: {
+                        show: function () { recalcAndApply(this.chart); },
+                        hide: function () { recalcAndApply(this.chart); }
+                    }
+                }
+            },
             tooltip: {
                 shared: true,
                 useHTML: true,
@@ -351,10 +396,10 @@ class CriarGraficos {
                         }).format(v);
 
                     let html = `<div class="panel panel-default" style="min-width:230px;margin:0;">
-          <div class="panel-heading" style="font-weight:bold; text-align:center; padding:5px 10px;">
-            ${this.key}
-          </div>
-          <div class="list-group" style="margin:0;">`;
+                    <div class="panel-heading" style="font-weight:bold; text-align:center; padding:5px 10px;">
+                        ${this.key}
+                    </div>
+                    <div class="list-group" style="margin:0;">`;
 
                     let total = 0;
                     if (tooltipMode === 'total') {
@@ -362,11 +407,11 @@ class CriarGraficos {
                     }
 
                     this.points.forEach(point => {
-                        const serie = seriesData.find(s => s.name === point.series.name) || {};
-                        const dec = serie.decimals ?? 0;
+                        const uo = point.series.userOptions || {};
+                        const dec = uo.decimals ?? 0;
                         const valueStr = fmtNumber(point.y, dec);
-                        const suffix = serie.suffix || '';
-                        const prefix = serie.prefix || '';
+                        const suffix = uo.suffix || '';
+                        const prefix = uo.prefix || '';
 
                         let extra = '';
                         if (tooltipMode === 'total') {
@@ -376,9 +421,9 @@ class CriarGraficos {
                         }
 
                         html += `<div class="list-group-item" style="display:flex;justify-content:space-between;align-items:center;padding:5px 10px;">
-            <span><span style="color:${point.color}">\u25CF</span> ${point.series.name}</span>
-            <span>&nbsp;&nbsp;<b>${prefix}${valueStr}${suffix}</b>${extra}</span>
-          </div>`;
+                            <span><span style="color:${point.color}">\u25CF</span> ${point.series.name}</span>
+                            <span>&nbsp;&nbsp;<b>${prefix}${valueStr}${suffix}</b>${extra}</span>
+                        </div>`;
                     });
 
                     if (tooltipMode === 'total') {
@@ -398,7 +443,6 @@ class CriarGraficos {
             series
         });
     }
-
 
     //
     /**
