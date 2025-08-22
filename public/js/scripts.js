@@ -552,7 +552,7 @@ function arrumaResizeDataTable(id_tabela, table) {
     });
 }
 //LADDA
-function startLadda(targetSelector) {
+function startLadda(targetSelector = '.ladda-button') {
     const buttons = document.querySelectorAll(targetSelector);
     buttons.forEach(button => {
         const laddaInstance = Ladda.create(button);
@@ -561,7 +561,7 @@ function startLadda(targetSelector) {
     });
 }
 
-function stopLadda(targetSelector) {
+function stopLadda(targetSelector= '.ladda-button') {
     const buttons = document.querySelectorAll(targetSelector);
     buttons.forEach(button => {
         if (button._laddaInstance) {

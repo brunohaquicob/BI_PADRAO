@@ -185,4 +185,44 @@ class RelatorioController extends Controller {
             return ControllerUtils::jsonResponse(false, $post, "File:" . $e->getFile() . " | Linha:" . $e->getLine() . " | Erro: " . $e->getMessage());
         }
     }
+
+    //rel_analise_funcionario
+    public function rel_analise_funcionario_dados(Request $request) {
+        $post       = [];
+        $retorno    = [];
+        $pasta_request      = "aqc_bi_padrao";
+        $sub_pasta_resquest = "rel_analise_funcionario";
+        try {
+
+            $ar_fields['rel_carteira']      = 'required|array';
+            $ar_fields['rel_mes_base']      = 'required|string';
+            $ar_fields['rel_agrupador']     = 'required|string';
+
+            $dadosTratados = ControllerUtils::validateRequest($request, $ar_fields);
+
+            $dados = [];
+
+            $post = [
+                "rel_agrupador" => $dadosTratados['rel_agrupador'],
+                "rel_mes_base"  => $dadosTratados['rel_mes_base'],
+                "rel_carteira"  => !empty($dadosTratados['rel_carteira']) ? $dadosTratados['rel_carteira'] : []
+            ];
+
+            $dados = ControllerUtils::excutarChamadaApiAqc($sub_pasta_resquest, $pasta_request, $post, $this->tempo_execucao, true);
+            if (!isset($dados['retorno']) || $dados['retorno'] === false || empty($dados['dados']['json_data'])) {
+                return ControllerUtils::jsonResponse(false, [], $dados['mensagem'] ?? "Erro ao buscar dados na API");
+            }
+
+            $retorno['tabela'] = $dados['dados']['json_data'];
+
+            //TRATAR LINK
+            if (!empty($dados['dados']['link'])) {
+                $retorno['htmlDownload'] = ControllerUtils::retornaHtml($dados['dados']['link'], ($dados['dados']['linhas'] ?? ''));
+            }
+            return ControllerUtils::jsonResponse(true, $retorno, "Tempo da requisição: " . $this->tempo_execucao);
+        } catch (\Exception $e) {
+            return ControllerUtils::jsonResponse(false, $post, "File:" . $e->getFile() . " | Linha:" . $e->getLine() . " | Erro: " . $e->getMessage());
+        }
+    }
+
 }

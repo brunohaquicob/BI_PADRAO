@@ -162,6 +162,36 @@ class PagesController extends Controller {
             return redirect()->route('login');
         }
     }
+    public function rel_analise_funcionario() {
+        if (Auth::check()) {
+
+            // $dados = ControllerUtils::excutarChamadaApiAqc('get_lojas', "aqc_bi_padrao", [], $time, true);
+            // //dd($dados);
+            // if (!isset($dados['retorno']) || $dados['retorno'] === false) {
+                //     return redirect()->route('unauthorized')->withErrors(['error' => "Erro ao buscar dados API AQC: " . $dados['mensagem']]);
+                // }
+
+            $dados = ControllerUtils::excutarChamadaApiAqc('get_lojas_equipe', "aqc_bi_padrao", [], $time, true);
+            //dd($dados);
+            if (!isset($dados['retorno']) || $dados['retorno'] === false) {
+                return redirect()->route('unauthorized')->withErrors(['error' => "Erro ao buscar dados API AQC: " . $dados['mensagem']]);
+            }
+            
+            $meses = ControllerUtils::gerarUltimosMesesAr(12);
+            $data = [
+                // 'lojas' => $dados['dados'],
+                'equipe_lojas' => $dados['dados'],
+                'meses' => $meses
+            ];
+
+            $routeName = Route::currentRouteName();
+            $nameView  = RouteView::where('route_name', $routeName)->first();
+            $data['nameView'] = $nameView->name;
+            return view('pages.relatorios.rel_analise_funcionario', $data);
+        } else {
+            return redirect()->route('login');
+        }
+    }
     public function credor_dash_carteira_desempenho() {
         if (Auth::check()) {
 
