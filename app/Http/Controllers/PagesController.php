@@ -171,6 +171,11 @@ class PagesController extends Controller {
                 //     return redirect()->route('unauthorized')->withErrors(['error' => "Erro ao buscar dados API AQC: " . $dados['mensagem']]);
                 // }
 
+            $usuarios = ControllerUtils::excutarChamadaApiAqc('get_usuarios', "aqc_bi_padrao", [], $time, true);
+            //dd($dados);
+            if (!isset($usuarios['retorno']) || $usuarios['retorno'] === false) {
+                return redirect()->route('unauthorized')->withErrors(['error' => "Erro ao buscar dados API AQC: " . $usuarios['mensagem']]);
+            }
             $dados = ControllerUtils::excutarChamadaApiAqc('get_lojas_equipe', "aqc_bi_padrao", [], $time, true);
             //dd($dados);
             if (!isset($dados['retorno']) || $dados['retorno'] === false) {
@@ -181,6 +186,7 @@ class PagesController extends Controller {
             $data = [
                 // 'lojas' => $dados['dados'],
                 'equipe_lojas' => $dados['dados'],
+                'usuarios' => $usuarios['dados'],
                 'meses' => $meses
             ];
 

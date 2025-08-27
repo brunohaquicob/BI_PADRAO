@@ -195,6 +195,7 @@ class RelatorioController extends Controller {
         try {
 
             $ar_fields['rel_carteira']      = 'required|array';
+            $ar_fields['rel_usuario']      = 'nullable|array';
             $ar_fields['rel_mes_base']      = 'required|string';
             $ar_fields['rel_agrupador']     = 'required|string';
 
@@ -205,7 +206,8 @@ class RelatorioController extends Controller {
             $post = [
                 "rel_agrupador" => $dadosTratados['rel_agrupador'],
                 "rel_mes_base"  => $dadosTratados['rel_mes_base'],
-                "rel_carteira"  => !empty($dadosTratados['rel_carteira']) ? $dadosTratados['rel_carteira'] : []
+                "rel_carteira"  => !empty($dadosTratados['rel_carteira']) ? $dadosTratados['rel_carteira'] : [],
+                "rel_usuario"  => !empty($dadosTratados['rel_usuario']) ? $dadosTratados['rel_usuario'] : []
             ];
 
             $dados = ControllerUtils::excutarChamadaApiAqc($sub_pasta_resquest, $pasta_request, $post, $this->tempo_execucao, true);

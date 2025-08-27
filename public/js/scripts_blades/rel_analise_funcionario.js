@@ -81,14 +81,7 @@ async function tratarRetorno(dados, divTabela) {
         // Placeholder para info-box (vamos preencher depois)
         infoboxRenderer: function ($row, outros, payload) {
             // ========= helpers visuais =========
-            const _fmtNum = typeof fmtNum === 'function'
-                ? fmtNum
-                : (n) => (Number(n || 0)).toLocaleString('pt-BR', {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2
-                });
-
-            const fmtPerc = (v) => `${(v * 100).toFixed(2).replace('.', ',')}%`;
+            const fmtPerc = (v) => `${doubleToMoney(v, 3)}%`;
 
             // >>> FIX: box aceita string (ex.: "64,27%") e só numera quando for número
             const box = (titulo, valor, {
@@ -102,7 +95,7 @@ async function tratarRetorno(dados, divTabela) {
                 const isNumber = typeof valor === 'number' && Number.isFinite(valor);
 
                 // Valor para exibição:
-                const valueHtml = isNumber ? _fmtNum(valor) : String(valor);
+                const valueHtml = isNumber ? doubleToMoney(valor, 2) : String(valor);
 
                 // Badge de percentual opcional, só quando valor É numérico
                 let pctHtml = '';
@@ -199,6 +192,7 @@ async function tratarRetorno(dados, divTabela) {
             const totPgtoCAdj = Object.values(pgtoCAdjByDate).reduce((s, v) => s + (+v || 0), 0);
             const mediaPgtoP = totPgtoPAdj / diasUteisPeriodo;
             const mediaPgtoC = totPgtoCAdj / diasUteisPeriodo;
+            const mediaPgtoG =( totPgtoCAdj + totPgtoPAdj) / diasUteisPeriodo;
 
             // ======= bases para percentuais nos boxes =======
             const totalRecebido = (outros.vl_pago_p || 0) + (outros.vl_pago_c || 0);
@@ -222,26 +216,32 @@ async function tratarRetorno(dados, divTabela) {
                 }) +
 
                 // ABERTOS — % do Total Aberto
+                box('Em Aberto Ttotal', ((outros.vl_aberto_p + outros.vl_aberto_c) || 0), {
+                    icon: 'fa-hand-holding-usd', bg: 'bg-lightblue', size: 4
+                }) +
                 box('Em Aberto Primeira Parcela', (outros.vl_aberto_p || 0), {
-                    icon: 'fa-hand-holding-usd', bg: 'bg-lightblue', size: 6, percentOf: totalAberto, percentSuffix: ' do Aberto'
+                    icon: 'fa-hand-holding-usd', bg: 'bg-lightblue', size: 4, percentOf: totalAberto, percentSuffix: ' do Aberto'
                 }) +
                 box('Em Aberto Colchão', (outros.vl_aberto_c || 0), {
-                    icon: 'fa-hand-holding-usd', bg: 'bg-lightblue', size: 6, percentOf: totalAberto, percentSuffix: ' do Aberto'
+                    icon: 'fa-hand-holding-usd', bg: 'bg-lightblue', size: 4, percentOf: totalAberto, percentSuffix: ' do Aberto'
                 }) +
 
+                // MÉDIAS (dia útil)
+                box('Geral Pgto (Devedores) — média/dia útil (' + diasUteisPeriodo + ')', mediaPgtoG, {
+                    icon: 'fa-chart-line', bg: 'bg-secondary', size: 4
+                }) +
+                box('Primeiro Pgto (Devedores) — média/dia útil (' + diasUteisPeriodo + ')', mediaPgtoP, {
+                    icon: 'fa-chart-line', bg: 'bg-secondary', size: 4, percentOf: mediaPgtoG, percentSuffix: ' do Geral'
+                }) +
+                box('Colchão Pgto (Devedores) — média/dia útil (' + diasUteisPeriodo + ')', mediaPgtoC, {
+                    icon: 'fa-chart-line', bg: 'bg-secondary', size: 4, percentOf: mediaPgtoG, percentSuffix: ' do Geral'
+                }) +
                 // EFETIVIDADES
                 box('Devedores Acionados', fmtPerc(efDevSobreAcion), { icon: 'fa-user-check', bg: 'bg-olive' }) +
                 box('CPC', fmtPerc(efCPCSobreAcion), { icon: 'fa-phone', bg: 'bg-olive' }) +
                 box('CPCA', fmtPerc(efCPCASobreDeved), { icon: 'fa-handshake', bg: 'bg-olive' }) +
-                box('Pagamentos', fmtPerc(efPgtosSobreAcord), { icon: 'fa-money-bill-wave', bg: 'bg-olive' }) +
-
-                // MÉDIAS (dia útil)
-                box('Primeiro Pgto (Devedores) — média/dia útil', mediaPgtoP, {
-                    icon: 'fa-chart-line', bg: 'bg-secondary', size: 6
-                }) +
-                box('Colchão Pgto (Devedores) — média/dia útil', mediaPgtoC, {
-                    icon: 'fa-chart-line', bg: 'bg-secondary', size: 6
-                })
+                box('Pagamentos', fmtPerc(efPgtosSobreAcord), { icon: 'fa-money-bill-wave', bg: 'bg-olive' }) 
+                
             );
         },
         hideZeros: true,            // ficar só com números relevantes

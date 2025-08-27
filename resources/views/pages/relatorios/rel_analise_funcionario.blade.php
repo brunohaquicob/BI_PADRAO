@@ -43,6 +43,24 @@
                     </div>
                     <div class="col-md-3">
                         <div class="form-group">
+                            <label for="rel_usuario">Usuarios:</label>
+
+                            <select class="form-control selectpickerNovo" id="rel_usuario" name="rel_usuario[]" multiple="multiple">
+                                @php
+                                    $grouped = collect($usuarios)->groupBy('grupo');
+                                @endphp
+                                @foreach ($grouped as $grupo => $itens)
+                                    <optgroup label="{{ $grupo }}">
+                                        @foreach ($itens as $v)
+                                            <option value="{{ $v['col1'] }}">{{ $v['col2'] }}</option>
+                                        @endforeach
+                                    </optgroup>
+                                @endforeach
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="form-group">
                             <label for="rel_carteira">Equipe Loja:</label>
 
                             <select class="form-control selectpickerNovo" id="rel_carteira" name="rel_carteira[]" multiple="multiple">
