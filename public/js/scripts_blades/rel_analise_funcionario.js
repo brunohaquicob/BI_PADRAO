@@ -65,7 +65,7 @@ async function tratarRetorno(dados, divTabela) {
         // Opcional: renomear linhas:
         labelsMap: {
             qtd_acionamentos: 'Acionamentos',
-            qtd_devedor_acionado: 'Devedores Acionados',
+            qtd_devedor_acionado: 'Acionamentos (Devedores)',
             qtd_acionamentos_direto: 'CPC',
             qtd_acionamentos_direto_acordo: 'CPCA',
             // qtd_pagamentos_p: 'Primeiro Pagamentos',
@@ -216,7 +216,7 @@ async function tratarRetorno(dados, divTabela) {
                 }) +
 
                 // ABERTOS — % do Total Aberto
-                box('Em Aberto Ttotal', ((outros.vl_aberto_p + outros.vl_aberto_c) || 0), {
+                box('Em Aberto Total', ((outros.vl_aberto_p + outros.vl_aberto_c) || 0), {
                     icon: 'fa-hand-holding-usd', bg: 'bg-lightblue', size: 4
                 }) +
                 box('Em Aberto Primeira Parcela', (outros.vl_aberto_p || 0), {
