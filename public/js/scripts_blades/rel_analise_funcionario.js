@@ -65,11 +65,11 @@ async function tratarRetorno(dados, divTabela) {
         // Opcional: renomear linhas:
         labelsMap: {
             qtd_acionamentos: 'Acionamentos',
-            qtd_acionamentos_direto: 'Acion. Direto',
-            qtd_acionamentos_direto_acordo: 'Acion. Direto Acordo',
             qtd_devedor_acionado: 'Devedores Acionados',
-            qtd_pagamentos_p: 'Primeiro Pagamentos',
-            qtd_pagamentos_c: 'Colchão Pagamentos',
+            qtd_acionamentos_direto: 'CPC',
+            qtd_acionamentos_direto_acordo: 'CPCA',
+            // qtd_pagamentos_p: 'Primeiro Pagamentos',
+            // qtd_pagamentos_c: 'Colchão Pagamentos',
             qtd_devedor_pago_p: 'Primeiro Pgto (Devedores)',
             qtd_devedor_pago_c: 'Colchão Pgto (Devedores)'
         },
@@ -80,25 +80,168 @@ async function tratarRetorno(dados, divTabela) {
 
         // Placeholder para info-box (vamos preencher depois)
         infoboxRenderer: function ($row, outros, payload) {
-            // Exemplo simples de 2 info-box (AdminLTE3)
-            const box = (titulo, valor, icon = 'fa-coins', bg = 'bg-info', size = 3) => `
-            <div class="col-6 col-md-${size}">
-                <div class="info-box ${bg}">
-                <span class="info-box-icon"><i class="fas ${icon}"></i></span>
-                <div class="info-box-content">
-                    <span class="info-box-text">${escapeHtml(titulo)}</span>
-                    <span class="info-box-number">${fmtNum(valor)}</span>
-                </div>
-                </div>
-            </div>`;
+            // ========= helpers visuais =========
+            const _fmtNum = typeof fmtNum === 'function'
+                ? fmtNum
+                : (n) => (Number(n || 0)).toLocaleString('pt-BR', {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2
+                });
+
+            const fmtPerc = (v) => `${(v * 100).toFixed(2).replace('.', ',')}%`;
+
+            // >>> FIX: box aceita string (ex.: "64,27%") e só numera quando for número
+            const box = (titulo, valor, {
+                icon = 'fa-coins',
+                bg = 'bg-info',
+                size = 3,
+                percentOf = null,
+                percentPrefix = '',
+                percentSuffix = ''
+            } = {}) => {
+                const isNumber = typeof valor === 'number' && Number.isFinite(valor);
+
+                // Valor para exibição:
+                const valueHtml = isNumber ? _fmtNum(valor) : String(valor);
+
+                // Badge de percentual opcional, só quando valor É numérico
+                let pctHtml = '';
+                if (isNumber && percentOf && Number(percentOf) > 0) {
+                    const p = (valor / Number(percentOf)) * 100;
+                    pctHtml = `
+                    <span class="badge bg-white text-dark ml-2" style="font-weight:600; letter-spacing:.2px;">
+                        ${percentPrefix}${p.toFixed(2).replace('.', ',')}%${percentSuffix}
+                    </span>`;
+                    pctHtml = `
+                    <span style="
+                        font-size: 65%;
+                        // vertical-align: super;
+                        margin-left: 4px;
+                        opacity: .85;
+                    ">
+                        (${percentPrefix}${p.toFixed(2).replace('.', ',')}%${percentSuffix})
+                    </span>`;
+
+
+                }
+
+                return `
+                <div class="col-6 col-md-${size}">
+                    <div class="info-box ${bg}">
+                        <span class="info-box-icon"><i class="fas ${icon}"></i></span>
+                        <div class="info-box-content">
+                            <span class="info-box-text">${escapeHtml(titulo)}</span>
+                            <span class="info-box-number d-flex align-items-center">
+                                ${valueHtml}
+                                ${pctHtml}
+                            </span>
+                        </div>
+                    </div>
+                </div>`;
+            };
+
+
+            // ========= (resto dos cálculos que você já tem) =========
+            const getTotal = (key) => +((payload?.linhas?.[key]?.total) || 0);
+
+            const totAcion = getTotal('qtd_acionamentos');
+            const totDevAc = getTotal('qtd_devedor_acionado');
+            const totCPC = getTotal('qtd_acionamentos_direto');
+            const totCPCA = getTotal('qtd_acionamentos_direto_acordo');
+            const totPgtoP = getTotal('qtd_devedor_pago_p');
+            const totPgtoC = getTotal('qtd_devedor_pago_c');
+            const totPgtos = totPgtoP + totPgtoC;
+
+            const efDevSobreAcion = (totAcion > 0) ? (totDevAc / totAcion) : 0;
+            const efCPCSobreAcion = (totAcion > 0) ? (totCPC / totAcion) : 0;
+            const efCPCASobreDeved = (totDevAc > 0) ? (totCPCA / totDevAc) : 0;
+            const efPgtosSobreAcord = (totCPCA > 0) ? (totPgtos / totCPCA) : 0;
+
+            // ======= médias com realocação p/ dias úteis (mantém seu bloco anterior) =======
+            const feriados = new Set((payload?.feriados || []).filter(s => /^\d{4}-\d{2}-\d{2}$/.test(s)));
+            const parse = (s) => { const [Y, M, D] = s.split('-').map(Number); return new Date(Y, M - 1, D); };
+            const fmtDate = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+            const sameMonth = (a, b) => a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth();
+            const dow = (d) => d.getDay();
+            const isWeekend = (d) => [0, 6].includes(dow(d));
+            const isHoliday = (d) => feriados.has(fmtDate(d));
+            const isBizDay = (d) => !isWeekend(d) && !isHoliday(d);
+            const prevBizSameMonth = (d) => { const x = new Date(d); while (true) { x.setDate(x.getDate() - 1); if (!sameMonth(x, d)) return d; if (isBizDay(x)) return x; } };
+            const normalizeToBizDaySameMonth = (d) => {
+                if (isBizDay(d)) return d;
+                const w = dow(d);
+                const tryMon = new Date(d); tryMon.setDate(d.getDate() + (w === 6 ? 2 : 1));
+                if (sameMonth(d, tryMon) && isBizDay(tryMon)) return tryMon;
+                return prevBizSameMonth(d);
+            };
+            const aggregateToBusinessDays = (byDateObj) => {
+                const out = {};
+                Object.entries(byDateObj || {}).forEach(([k, v]) => {
+                    if (!/^\d{4}-\d{2}-\d{2}$/.test(k)) return;
+                    const nd = normalizeToBizDaySameMonth(parse(k));
+                    const key = fmtDate(nd);
+                    out[key] = (out[key] || 0) + (+v || 0);
+                });
+                return out;
+            };
+            const countBusinessDaysInRange = (datesList) => {
+                if (!datesList.length) return 0;
+                const sorted = datesList.slice().sort();
+                let cur = parse(sorted[0]), end = parse(sorted[sorted.length - 1]), n = 0;
+                while (cur <= end) { if (isBizDay(cur)) n++; cur.setDate(cur.getDate() + 1); }
+                return Math.max(n, 1);
+            };
+            const datasBase = Object.keys(payload?.linhas?.qtd_acionamentos || {}).filter(d => /^\d{4}-\d{2}-\d{2}$/.test(d));
+            const diasUteisPeriodo = countBusinessDaysInRange(datasBase);
+            const pgtoPAdjByDate = aggregateToBusinessDays(payload?.linhas?.qtd_devedor_pago_p || {});
+            const pgtoCAdjByDate = aggregateToBusinessDays(payload?.linhas?.qtd_devedor_pago_c || {});
+            const totPgtoPAdj = Object.values(pgtoPAdjByDate).reduce((s, v) => s + (+v || 0), 0);
+            const totPgtoCAdj = Object.values(pgtoCAdjByDate).reduce((s, v) => s + (+v || 0), 0);
+            const mediaPgtoP = totPgtoPAdj / diasUteisPeriodo;
+            const mediaPgtoC = totPgtoCAdj / diasUteisPeriodo;
+
+            // ======= bases para percentuais nos boxes =======
+            const totalRecebido = (outros.vl_pago_p || 0) + (outros.vl_pago_c || 0);
+            const totalAberto = (outros.vl_aberto_p || 0) + (outros.vl_aberto_c || 0);
+            const totalComissao = (outros.vl_comissao_p || 0) + (outros.vl_comissao_c || 0);
+
+            // ========= Render =========
             $row.html(
-                box('Recebido Primeiro Pgto', outros.vl_pago_p || 0, 'fa-hand-holding-usd', 'bg-success') +
-                box('Recebido Colchão', outros.vl_pago_c || 0, 'fa-hand-holding-usd', 'bg-success') +
-                box('Em Aberto Primeira Parcela', outros.vl_aberto_p || 0, 'fa-hand-holding-usd', 'bg-warning') +
-                box('Em Aberto Colchão', outros.vl_aberto_c || 0, 'fa-hand-holding-usd', 'bg-warning') +
-                box('Honorario Pgto', outros.vl_honorario_p + outros.vl_honorario_c || 0, 'fa-hand-holding-usd', 'bg-info', 6) +
-                box('Comissão  Pgto', outros.vl_comissao_p + outros.vl_comissao_c || 0, 'fa-hand-holding-usd', 'bg-info', 6) +
-                ""
+                // RECEBIDOS — % do Total Recebido
+                box('Total Recebido', totalRecebido, {
+                    icon: 'fa-wallet', bg: 'bg-success', size: 3
+                }) +
+                box('Recebido Primeiro Pgto', (outros.vl_pago_p || 0), {
+                    icon: 'fa-hand-holding-usd', bg: 'bg-success', percentOf: totalRecebido, percentSuffix: ' de Recebido'
+                }) +
+                box('Recebido Colchão', (outros.vl_pago_c || 0), {
+                    icon: 'fa-hand-holding-usd', bg: 'bg-success', percentOf: totalRecebido, percentSuffix: ' de Recebido'
+                }) +
+                box('Comissão Pgto', totalComissao, {
+                    icon: 'fa-percentage', bg: 'bg-success', size: 3, percentOf: totalRecebido, percentSuffix: ' do Recebido'
+                }) +
+
+                // ABERTOS — % do Total Aberto
+                box('Em Aberto Primeira Parcela', (outros.vl_aberto_p || 0), {
+                    icon: 'fa-hand-holding-usd', bg: 'bg-lightblue', size: 6, percentOf: totalAberto, percentSuffix: ' do Aberto'
+                }) +
+                box('Em Aberto Colchão', (outros.vl_aberto_c || 0), {
+                    icon: 'fa-hand-holding-usd', bg: 'bg-lightblue', size: 6, percentOf: totalAberto, percentSuffix: ' do Aberto'
+                }) +
+
+                // EFETIVIDADES
+                box('Devedores Acionados', fmtPerc(efDevSobreAcion), { icon: 'fa-user-check', bg: 'bg-olive' }) +
+                box('CPC', fmtPerc(efCPCSobreAcion), { icon: 'fa-phone', bg: 'bg-olive' }) +
+                box('CPCA', fmtPerc(efCPCASobreDeved), { icon: 'fa-handshake', bg: 'bg-olive' }) +
+                box('Pagamentos', fmtPerc(efPgtosSobreAcord), { icon: 'fa-money-bill-wave', bg: 'bg-olive' }) +
+
+                // MÉDIAS (dia útil)
+                box('Primeiro Pgto (Devedores) — média/dia útil', mediaPgtoP, {
+                    icon: 'fa-chart-line', bg: 'bg-secondary', size: 6
+                }) +
+                box('Colchão Pgto (Devedores) — média/dia útil', mediaPgtoC, {
+                    icon: 'fa-chart-line', bg: 'bg-secondary', size: 6
+                })
             );
         },
         hideZeros: true,            // ficar só com números relevantes
