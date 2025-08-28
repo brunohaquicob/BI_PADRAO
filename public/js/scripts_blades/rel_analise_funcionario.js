@@ -68,6 +68,7 @@ async function tratarRetorno(dados, divTabela) {
             qtd_devedor_acionado: 'Acionamentos (Devedores)',
             qtd_acionamentos_direto: 'CPC',
             qtd_acionamentos_direto_acordo: 'CPCA',
+            qtd_acionamentos_direto_acordo_pago: 'CPCA Pgto',
             // qtd_pagamentos_p: 'Primeiro Pagamentos',
             // qtd_pagamentos_c: 'Colchão Pagamentos',
             qtd_devedor_pago_p: 'Primeiro Pgto (Devedores)',
@@ -144,11 +145,12 @@ async function tratarRetorno(dados, divTabela) {
             const totPgtoP = getTotal('qtd_devedor_pago_p');
             const totPgtoC = getTotal('qtd_devedor_pago_c');
             const totPgtos = totPgtoP;
+            const totPgtoCPCA = getTotal('qtd_acionamentos_direto_acordo_pago');
 
             const efDevSobreAcion = (totAcion > 0) ? (totDevAc / totAcion)  : 0;
             const efCPCSobreAcion = (totAcion > 0) ? (totCPC / totAcion) : 0;
             const efCPCASobreDeved = (totDevAc > 0) ? (totCPCA / totDevAc) : 0;
-            const efPgtosSobreAcord = (totCPCA > 0) ? (totPgtos / totCPCA) : 0;
+            const efPgtosSobreAcord = (totCPCA > 0) ? (totPgtoCPCA / totCPCA) : 0;
 
             // ======= médias com realocação p/ dias úteis (mantém seu bloco anterior) =======
             const feriados = new Set((payload?.feriados || []).filter(s => /^\d{4}-\d{2}-\d{2}$/.test(s)));
@@ -240,7 +242,7 @@ async function tratarRetorno(dados, divTabela) {
                 box('Devedores Acionados', fmtPerc(efDevSobreAcion), { icon: 'fa-user-check', bg: 'bg-olive' }) +
                 box('CPC', fmtPerc(efCPCSobreAcion), { icon: 'fa-phone', bg: 'bg-olive' }) +
                 box('CPCA', fmtPerc(efCPCASobreDeved), { icon: 'fa-handshake', bg: 'bg-olive' }) +
-                box('Pagamentos', fmtPerc(efPgtosSobreAcord), { icon: 'fa-money-bill-wave', bg: 'bg-olive' }) 
+                box('Pagamentos CPCA', fmtPerc(efPgtosSobreAcord), { icon: 'fa-money-bill-wave', bg: 'bg-olive' }) 
                 
             );
         },
