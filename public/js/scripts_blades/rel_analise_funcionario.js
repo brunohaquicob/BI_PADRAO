@@ -81,7 +81,7 @@ async function tratarRetorno(dados, divTabela) {
         // Placeholder para info-box (vamos preencher depois)
         infoboxRenderer: function ($row, outros, payload) {
             // ========= helpers visuais =========
-            const fmtPerc = (v) => `${doubleToMoney(v, 3)}%`;
+            const fmtPerc = (v) => `${doubleToMoney(v * 100, 3)}%`;
 
             // >>> FIX: box aceita string (ex.: "64,27%") e só numera quando for número
             const box = (titulo, valor, {
@@ -145,7 +145,7 @@ async function tratarRetorno(dados, divTabela) {
             const totPgtoC = getTotal('qtd_devedor_pago_c');
             const totPgtos = totPgtoP + totPgtoC;
 
-            const efDevSobreAcion = (totAcion > 0) ? (totDevAc / totAcion) : 0;
+            const efDevSobreAcion = (totAcion > 0) ? (totDevAc / totAcion)  : 0;
             const efCPCSobreAcion = (totAcion > 0) ? (totCPC / totAcion) : 0;
             const efCPCASobreDeved = (totDevAc > 0) ? (totCPCA / totDevAc) : 0;
             const efPgtosSobreAcord = (totCPCA > 0) ? (totPgtos / totCPCA) : 0;
