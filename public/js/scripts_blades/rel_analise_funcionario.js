@@ -143,7 +143,7 @@ async function tratarRetorno(dados, divTabela) {
             const totCPCA = getTotal('qtd_acionamentos_direto_acordo');
             const totPgtoP = getTotal('qtd_devedor_pago_p');
             const totPgtoC = getTotal('qtd_devedor_pago_c');
-            const totPgtos = totPgtoP + totPgtoC;
+            const totPgtos = totPgtoP;
 
             const efDevSobreAcion = (totAcion > 0) ? (totDevAc / totAcion)  : 0;
             const efCPCSobreAcion = (totAcion > 0) ? (totCPC / totAcion) : 0;
