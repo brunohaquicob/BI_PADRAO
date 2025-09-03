@@ -36,7 +36,7 @@ class PagesController extends Controller {
         $nameView = RouteView::where('route_name', $routeName)->first();
         $data['nameView'] = $nameView->name ?? 'Dashboard';
         // dd($empresa);
-        switch (trim(strtoupper($empresa->app_name))) {
+        switch (trim(strtoupper($empresa->db_database))) {
             case 'PADRAO':
                 return view('pages.dashboards.dashboard_padrao', $data);
             case 'VERTEX':
@@ -45,6 +45,8 @@ class PagesController extends Controller {
                 return view('pages.dashboards.dashboard_padrao', $data);
             case 'NACIONAL':
                 return view('pages.dashboards.dashboard_padrao', $data);
+            case 'TOPONE':
+                return view('pages.topone.dashboard_padrao', $data);
             default:
                 return view('pages.dashboards.dashboard_padrao', $data);
         }
@@ -67,7 +69,7 @@ class PagesController extends Controller {
         $data['nameView'] = $nameView->name;
         return view('pages.relatorios.rel_analise_carteiras', $data);
     }
-    
+
     public function rel_acordos_gerencial() {
 
         $dados = ControllerUtils::excutarChamadaApiAqc('get_canais_senff', "aqc_bi", [], $time, true);
@@ -168,8 +170,8 @@ class PagesController extends Controller {
             // $dados = ControllerUtils::excutarChamadaApiAqc('get_lojas', "aqc_bi_padrao", [], $time, true);
             // //dd($dados);
             // if (!isset($dados['retorno']) || $dados['retorno'] === false) {
-                //     return redirect()->route('unauthorized')->withErrors(['error' => "Erro ao buscar dados API AQC: " . $dados['mensagem']]);
-                // }
+            //     return redirect()->route('unauthorized')->withErrors(['error' => "Erro ao buscar dados API AQC: " . $dados['mensagem']]);
+            // }
 
             $usuarios = ControllerUtils::excutarChamadaApiAqc('get_usuarios', "aqc_bi_padrao", [], $time, true);
             //dd($dados);
@@ -181,7 +183,7 @@ class PagesController extends Controller {
             if (!isset($dados['retorno']) || $dados['retorno'] === false) {
                 return redirect()->route('unauthorized')->withErrors(['error' => "Erro ao buscar dados API AQC: " . $dados['mensagem']]);
             }
-            
+
             $meses = ControllerUtils::gerarUltimosMesesAr(12);
             $data = [
                 // 'lojas' => $dados['dados'],
@@ -280,7 +282,7 @@ class PagesController extends Controller {
 
         $dadosGrupo = ControllerUtils::excutarChamadaApiAqc('get_credor_grupo', "aqc_bi_credores", ["and_where" => ""], $time, true);
         $grupoCredor = $dadosGrupo['dados'] ?: [];
-        
+
         $empresas = Empresa::where('emp_ativo', 'S')
             ->orderBy('emp_nome')
             ->get(['emp_codigo', 'emp_nome']);
