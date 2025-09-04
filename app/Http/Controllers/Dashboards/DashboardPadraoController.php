@@ -343,9 +343,9 @@ class DashboardPadraoController extends Controller {
                         $fields   = [];
                         $fields[] = ["text" => "Tkt. Médio", "value" => ($value2['qtd'] > 0 ? ($value2['valor'] / $value2['qtd']) : 0), "decimal" => 2, "principal" => ""];
                         $fields[] = ["text" => "Val. Acordos", "value" => $value2['valor'], "decimal" => 2, "principal" => true];
-                        $fields[] = ["text" => "Val. Pagos", "value" => $value2['valor_pago'], "decimal" => 2, "principal" => false];
-                        $fields[] = ["text" => "Val. Abertos", "value" => $value2['valor_aberto'] - $value2['valor_quebra'], "decimal" => 2, "principal" => false];
-                        $fields[] = ["text" => "Val. Quebras", "value" => $value2['valor_quebra'], "decimal" => 2, "principal" => false];
+                        $fields[] = ["text" => "Val. Pagos", "value" => $value2['valor_pago'], "decimal" => 2, "principal" => ""];
+                        $fields[] = ["text" => "Val. Abertos", "value" => $value2['valor_aberto'], "decimal" => 2, "principal" => ""];
+                        $fields[] = ["text" => "Val. Quebras", "value" => $value2['valor_quebra'], "decimal" => 2, "principal" => ""];
                         $fields[] = ["text" => "Qtd. Quebras", "value" => $value2['qtd_quebra'], "decimal" => 0, "principal" => ""];
                         $header[$key]['sub'][$key2]['fields'] = $fields;
                     }
@@ -359,10 +359,10 @@ class DashboardPadraoController extends Controller {
                 $fields   = [];
                 $fields[] = ["text" => "Tkt. Médio", "value" => ($value['qtd'] > 0 ? ($value['valor'] / $value['qtd']) : 0), "decimal" => 2, "principal" => ""];
                 $fields[] = ["text" => "Val. Acordos", "value" => $value['valor'], "decimal" => 2, "principal" => true];
-                $fields[] = ["text" => "Val. Pagos", "value" => $value['valor_pago'], "decimal" => 2, "principal" => false];
-                $fields[] = ["text" => "Val. Abertos", "value" => $value['valor_aberto'] - $value['valor_quebra'], "decimal" => 2, "principal" => false];
-                $fields[] = ["text" => "Val. Quebras", "value" => $value['valor_quebra'], "decimal" => 2, "principal" => false];
-                $fields[] = ["text" => "Qtd. Quebras", "value" => $value['qtd_quebra'], "decimal" => 0, "principal" => false];
+                $fields[] = ["text" => "Val. Pagos", "value" => $value['valor_pago'], "decimal" => 2, "principal" => ""];
+                $fields[] = ["text" => "Val. Abertos", "value" => $value['valor_aberto'], "decimal" => 2, "principal" => ""];
+                $fields[] = ["text" => "Val. Quebras", "value" => $value['valor_quebra'], "decimal" => 2, "principal" => ""];
+                $fields[] = ["text" => "Qtd. Quebras", "value" => $value['qtd_quebra'], "decimal" => 0, "principal" => ""];
                 $header[$key]['fields'] = $fields;
             }
 
