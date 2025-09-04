@@ -423,13 +423,13 @@ function montaDivsHeader(dados, routeDetalhes) {
         const label = (qtdCard === 1 ? 'acordo' : 'acordos');
 
         const tituloHtml = `
-    <span class="d-inline-flex align-items-center">
-      <i class="${icon} mr-1" aria-hidden="true"></i> ${titleText}
-    </span>
-    <small class="text-muted ml-2">
-      ${doubleToMoney(qtdCard, 0)} ${label} [${doubleToMoney(pctCard, 2)}%] de ${doubleToMoney(totRef, 0)}
-    </small>
-  `;
+        <span class="d-inline-flex align-items-center">
+        <i class="${icon} mr-1" aria-hidden="true"></i> ${titleText}
+        </span>
+        <small class="text-muted ml-2">
+        ${doubleToMoney(qtdCard, 0)} ${label} [${doubleToMoney(pctCard, 2)}%] de ${doubleToMoney(totRef, 0)}
+        </small>
+        `;
 
         const requestParams = {
             method: 'POST',

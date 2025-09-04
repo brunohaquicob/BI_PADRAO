@@ -195,3 +195,45 @@
 
 .modal-title small{ margin-left:.5rem; font-weight:400; }
 .modal-title i{ margin-right:.35rem; }
+
+/* ===== SUBS: no máximo 5 cards por linha ===== */
+.subs-grid{
+  /* cap de colunas + min-width confortável */
+  --gap:.5rem;           /* mantenha igual ao gap */
+  --min:260px;           /* largura mínima de cada card */
+  --max-cols:5;          /* <<< no máximo 5 por linha */
+  display:grid;
+  gap:var(--gap);
+  grid-template-columns: repeat(
+    auto-fit,
+    minmax(
+      max(var(--min), calc((100% - (var(--max-cols) - 1)*var(--gap)) / var(--max-cols))),
+      1fr
+    )
+  );
+}
+
+/* ===== SUBS: tabela mais compacta ===== */
+.subs-grid .w100perc th,
+.subs-grid .w100perc td{
+  padding: .06rem .2rem;      /* padding lateral menor */
+  font-size: 12px;            /* texto sutilmente menor só nos SUBS */
+}
+
+/* célula de valores: sem quebra, mas cabendo melhor */
+.subs-grid .w100perc td:last-child{
+  white-space: nowrap;        /* mantém em 1 linha */
+  padding-right: .2rem;       /* aperta a borda direita */
+  font-feature-settings: "tnum" 1; /* números tabulares (mais estreitos) */
+}
+
+/* percentual menor e colado ao valor */
+.subs-grid .value-pct{
+  margin-left: .2rem;
+  font-size: .75em;
+  opacity: .85;
+}
+
+/* opcional: reduz a altura da progress bar nos SUBS */
+.subs-grid .info-box.h-uniform .progress{ height:8px; }
+
