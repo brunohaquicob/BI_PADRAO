@@ -1,0 +1,197 @@
+/* ====== GRID / LAYOUT ====== */
+
+/* MAINS: altura máxima + scroll */
+.mains-wrap {
+  max-height: 460px;
+  overflow-y: auto;
+  margin-bottom: .75rem;
+}
+
+/* Grids responsivos que preenchem a linha */
+.mains-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: .75rem;
+  align-items: stretch;
+}
+
+.subs-wrap {
+  border: 1px solid rgba(0, 0, 0, .08);
+  border-radius: .5rem;
+  background: #f8f9fa;
+}
+
+.subs-header {
+  padding: .5rem .75rem;
+  background: #fff;
+  border-bottom: 1px solid rgba(0, 0, 0, .06);
+  border-top-left-radius: .5rem;
+  border-top-right-radius: .5rem;
+}
+
+.subs-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: .5rem;
+  padding: .5rem;
+  max-height: 360px;
+  overflow-y: auto;
+  width: 100%;
+}
+
+/* neutraliza col-* herdado dentro dos grids */
+.mains-grid>[class*="col-"],
+.mains-grid>.col,
+.subs-grid>[class*="col-"],
+.subs-grid>.col {
+  max-width: none !important;
+  width: auto !important;
+  padding: 0 !important;
+}
+
+/* ====== CARDS ====== */
+.info-box.h-uniform {
+  min-height: 160px;
+  height: 100%;
+  margin: 0 !important;
+}
+
+.info-box.h-uniform .info-box-content {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+/* espaço entre tabela e barra */
+.info-box.h-uniform .info-box-text .w100perc {
+  margin-bottom: .6rem;
+}
+
+/* progress bar com cara de barra */
+.info-box.h-uniform .progress {
+  margin-top: auto;
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .25);
+  overflow: hidden;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, .15);
+}
+
+.info-box.h-uniform .progress .progress-bar {
+  border-radius: 999px;
+  background-color: rgba(255, 255, 255, .9);
+}
+
+/* tabela interna mais compacta */
+.w100perc {
+  width: 100%;
+}
+
+.w100perc th,
+.w100perc td {
+  padding: .125rem .25rem;
+  line-height: 1.15;
+}
+
+.w100perc td:first-child {
+  opacity: .9;
+}
+
+.w100perc td:last-child {
+  text-align: right;
+  font-weight: 700;
+}
+
+.w100perc tbody tr+tr td {
+  border-top: 1px solid rgba(255, 255, 255, .12);
+}
+
+/* ====== INTERAÇÃO ====== */
+.click_detalhes {
+  cursor: pointer;
+}
+
+.click_detalhes .info-box {
+  box-shadow: none;
+  transition: transform .06s, box-shadow .12s;
+}
+
+.click_detalhes:hover .info-box {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, .18);
+}
+
+/* card ativo (deixe estas regras no final para ganhar da de hover) */
+.tem_subs.main-active>.info-box,
+.tem_subs.main-active:hover>.info-box {
+  outline: 2px solid rgba(255, 255, 255, .95);
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, .35), 0 10px 22px rgba(0, 0, 0, .28) !important;
+  transform: translateY(-2px);
+}
+
+/* utilidades */
+.tooltip-text {
+  font-weight: 600;
+  font-size: .95rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+#subs-title i {
+  margin-right: .35rem;
+}
+
+.d-none {
+  display: none !important;
+}
+
+/* Scrollbars discretas (webkit) */
+.mains-wrap::-webkit-scrollbar,
+.subs-grid::-webkit-scrollbar {
+  height: 8px;
+  width: 8px;
+}
+
+.mains-wrap::-webkit-scrollbar-track,
+.subs-grid::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, .06);
+  border-radius: 8px;
+}
+
+.mains-wrap::-webkit-scrollbar-thumb,
+.subs-grid::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, .25);
+  border-radius: 8px;
+}
+
+/* linha do TOTAL destacada */
+.w100perc .row-total td {
+  background: rgba(255, 255, 255, .08);
+  border-top: 1px solid rgba(255, 255, 255, .22);
+  border-bottom: 1px solid rgba(255, 255, 255, .18);
+  font-weight: 700;
+}
+
+/* selo "TOTAL" ao lado do label */
+.badge-total {
+  display: inline-block;
+  margin-left: .35rem;
+  padding: .05rem .4rem;
+  font-size: .65rem;
+  font-weight: 700;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .25);
+  color: #fff;
+}
+
+/* percentual exibido após o valor */
+.value-pct {
+  margin-left: .35rem;
+  opacity: .95;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.modal-title small{ margin-left:.5rem; font-weight:400; }
+.modal-title i{ margin-right:.35rem; }

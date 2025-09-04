@@ -38,11 +38,11 @@ class DashboardPadraoController extends Controller {
             $dados = [];
 
             $dados_request = ControllerUtils::excutarChamadaApiAqc('dash_acordos', "aqc_bi_padrao", ["data_ini" => $this->dataInicial, "data_fim" => $this->dataFinal], $this->tempo_execucao, true);
-            
-            if($dados_request['retorno'] === false){
+
+            if ($dados_request['retorno'] === false) {
                 return ControllerUtils::jsonResponse(false, [], $dados_request['mensagem']);
             }
-            
+
             $dados_retorno['header'] = $this->trataDadosHeader($dados_request);
             //$dados_retorno['grafico_pagamentos'] = $this->trataDadosPagamentos($dados_request['dados']['acordos']['pagamentos']);
             // Salva a variável de sessão
@@ -320,11 +320,12 @@ class DashboardPadraoController extends Controller {
                 $total += $value['qtd'];
                 $total_valor += $value['valor'];
             }
+            // dd($dados['dados']['acordos']['por_origem']);
             foreach ($dados['dados']['acordos']['por_origem'] as $key => $value) {
                 if (!isset($header[$key])) {
                     $header[$key] = $ar_padrao;
                     $header[$key]['size']   = $value['size'] ?? "auto";
-                    $header[$key]['color']  = $color[$i];
+                    $header[$key]['color']  = $color[0];
                     $i++;
                 }
                 if (!empty($value['sub'])) {
@@ -334,18 +335,18 @@ class DashboardPadraoController extends Controller {
                             'value' => $value2['qtd'],
                             'valor' => $value2['valor'],
                             'size' => $value2['size'],
-                            'color' => $color[$i - 1],
+                            'color' => $color[0],
                             'add_valor' => $value2['add_valor'],
                             'click' => 'S',
                             'click_key' => $value2['click']
                         ];
                         $fields   = [];
-                        $fields[] = ["text" => "Tkt. Médio", "value" => ($value2['qtd'] > 0 ? ($value2['valor'] / $value2['qtd']) : 0), "decimal" => 2];
-                        $fields[] = ["text" => "Val. Acordos", "value" => $value2['valor'], "decimal" => 2];
-                        $fields[] = ["text" => "Val. Pagos", "value" => $value2['valor_pago'], "decimal" => 2];
-                        $fields[] = ["text" => "Val. Abertos", "value" => $value2['valor_aberto'], "decimal" => 2];
-                        $fields[] = ["text" => "Val. Quebras", "value" => $value2['valor_quebra'], "decimal" => 2];
-                        $fields[] = ["text" => "Qtd. Quebras", "value" => $value2['qtd_quebra'], "decimal" => 0];
+                        $fields[] = ["text" => "Tkt. Médio", "value" => ($value2['qtd'] > 0 ? ($value2['valor'] / $value2['qtd']) : 0), "decimal" => 2, "principal" => ""];
+                        $fields[] = ["text" => "Val. Acordos", "value" => $value2['valor'], "decimal" => 2, "principal" => true];
+                        $fields[] = ["text" => "Val. Pagos", "value" => $value2['valor_pago'], "decimal" => 2, "principal" => false];
+                        $fields[] = ["text" => "Val. Abertos", "value" => $value2['valor_aberto'] - $value2['valor_quebra'], "decimal" => 2, "principal" => false];
+                        $fields[] = ["text" => "Val. Quebras", "value" => $value2['valor_quebra'], "decimal" => 2, "principal" => false];
+                        $fields[] = ["text" => "Qtd. Quebras", "value" => $value2['qtd_quebra'], "decimal" => 0, "principal" => ""];
                         $header[$key]['sub'][$key2]['fields'] = $fields;
                     }
                 } else {
@@ -354,14 +355,14 @@ class DashboardPadraoController extends Controller {
                 $header[$key]['value'] = $value['qtd'];
                 $header[$key]['valor'] = $value['valor'];
                 $header[$key]['click_key'] = $value['click'];
-                
+
                 $fields   = [];
-                $fields[] = ["text" => "Tkt. Médio", "value" => ($value['qtd'] > 0 ? ($value['valor'] / $value['qtd']) : 0), "decimal" => 2];
-                $fields[] = ["text" => "Val. Acordos", "value" => $value['valor'], "decimal" => 2];
-                $fields[] = ["text" => "Val. Pagos", "value" => $value['valor_pago'], "decimal" => 2];
-                $fields[] = ["text" => "Val. Abertos", "value" => $value['valor_aberto'], "decimal" => 2];
-                $fields[] = ["text" => "Val. Quebras", "value" => $value['valor_quebra'], "decimal" => 2];
-                $fields[] = ["text" => "Qtd. Quebras", "value" => $value['qtd_quebra'], "decimal" => 0];
+                $fields[] = ["text" => "Tkt. Médio", "value" => ($value['qtd'] > 0 ? ($value['valor'] / $value['qtd']) : 0), "decimal" => 2, "principal" => ""];
+                $fields[] = ["text" => "Val. Acordos", "value" => $value['valor'], "decimal" => 2, "principal" => true];
+                $fields[] = ["text" => "Val. Pagos", "value" => $value['valor_pago'], "decimal" => 2, "principal" => false];
+                $fields[] = ["text" => "Val. Abertos", "value" => $value['valor_aberto'] - $value['valor_quebra'], "decimal" => 2, "principal" => false];
+                $fields[] = ["text" => "Val. Quebras", "value" => $value['valor_quebra'], "decimal" => 2, "principal" => false];
+                $fields[] = ["text" => "Qtd. Quebras", "value" => $value['qtd_quebra'], "decimal" => 0, "principal" => false];
                 $header[$key]['fields'] = $fields;
             }
 

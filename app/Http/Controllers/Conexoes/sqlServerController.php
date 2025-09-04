@@ -23,7 +23,8 @@ class sqlServerController {
      */
     public function select($query, $bindings = []) {
         try {
-            return $this->connection->select($query, $bindings);
+            $result = $this->connection->select($query, $bindings);
+            return json_decode(json_encode($result), true);
         } catch (Exception $e) {
             return ['error' => $e->getMessage()];
         }

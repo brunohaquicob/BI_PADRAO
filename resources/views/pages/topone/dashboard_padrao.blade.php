@@ -27,9 +27,29 @@
                 $heightGraficos = '450px';
             @endphp
             <div class="container-fluid">
-                <div class="row mb-4" id="headers-dash">
-                </div>
-                <div class="row mb-4" id="headers-dash-subs">
+                <div class="row mb-4">
+                    <section class="col-12 px-0"> <!-- <= vira coluna e pode tirar o padding com px-0 -->
+                        <div class="dash-section">
+                            <!-- MAINS -->
+                            <div class="mains-wrap">
+                                <div id="headers-dash" class="mains-grid"></div>
+                            </div>
+
+                            <!-- SUBS -->
+                            <div id="subs-section" class="subs-wrap d-none">
+                                <div class="subs-header d-flex align-items-center justify-content-between">
+                                    <div>
+                                        <strong id="subs-title">Detalhes</strong>
+                                        <small id="subs-subtitle" class="ml-2 text-muted">
+                                            clique em um card para ver os sub-itens
+                                        </small>
+                                    </div>
+                                    <button type="button" class="btn btn-sm btn-light close-subs">&times;</button>
+                                </div>
+                                <div id="headers-dash-subs" class="subs-grid"></div>
+                            </div>
+                        </div>
+                    </section>
                 </div>
 
                 <div class="row mb-4">
@@ -221,6 +241,9 @@
 {{-- @section('plugins.HighChartsDashboards', true) --}}
 
 @once
+    @push('css')
+        <link href="{{ asset('css/dashboard/dash_padrao.css') }}" rel="stylesheet">
+    @endpush
     @push('js')
         <script src="{{ asset('js/pages/dashboard/dashboard_padrao.js') }}"></script>
         <script src="{{ asset('js/class/HighChartsPieChartMult.js') }}"></script>

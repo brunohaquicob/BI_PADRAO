@@ -19,22 +19,28 @@ class DashboardPadraoController extends Controller {
         $this->array_fases = ControllerUtils::fases_padrao();
     }
 
-    private function queryDashboard(){
+    private function queryDashboard() {
         return "WITH PrestMin AS (
             SELECT
                 tad.ID_Acordo,
                 tp.CPF_CGC,
+                tl.intCodLoja as cod_loja,
+                trim(tl.strFantasia) as loja,
+                lg.intCodGrupo as cod_loja_grupo,
+                trim(lg.strFantasia) as loja_grupo,
                 MIN(tp.DATA_VENCTO) AS menor_vencimento
-            FROM
-                TB_Acordos_Detalhe AS tad
-            INNER JOIN TB_Prestacoes AS tp
-                    ON
-                tp.CARTAO = tad.Cartao
+            FROM TB_Acordos_Detalhe AS tad
+            INNER JOIN TB_Acordos ta ON ta.ID_Acordo = tad.ID_Acordo
+            INNER JOIN TB_Contratos tc ON tc.CARTAO = tad.Cartao
+                AND tc.CONTRATO = tad.Contrato
+                AND tc.CPF_CGC = ta.CPF_CGC
+            INNER JOIN TB_Prestacoes AS tp ON tp.CARTAO = tad.Cartao
                 AND tp.CONTRATO = tad.Contrato
+                AND tp.CPF_CGC = ta.CPF_CGC
                 AND tp.NUM_PREST = tad.Num_Prest
-            GROUP BY
-                tad.ID_Acordo,
-                tp.CPF_CGC
+            INNER JOIN TB_Loja tl ON tl.intCodLoja = tc.LOJA
+            INNER JOIN TB_Grupo lg ON lg.intCodGrupo = tl.intCodGrupo
+            GROUP BY tad.ID_Acordo, tp.CPF_CGC, tl.intCodLoja, tl.strFantasia, lg.intCodGrupo, lg.strFantasia
             ),
             Pagamentos AS (
             SELECT
@@ -46,60 +52,128 @@ class DashboardPadraoController extends Controller {
                 SUM(CASE WHEN tap.DT_Pago = 0 THEN 1 ELSE 0 END) AS qt_parcelas_abertas,
                 SUM(tap.VL_Pago) AS total_pago,
                 -- próximo vencimento >= hoje (se existir)
-                MIN(CASE 
-                            WHEN tap.DT_Pago = 0 
-                            AND tap.DT_Vencto >= CAST(CONVERT(varchar(8), GETDATE(), 112) AS int)
-                            THEN tap.DT_Vencto 
-                        END) AS prox_venc_int_ge_hoje,
+                MIN(CASE WHEN tap.DT_Pago = 0 AND tap.DT_Vencto >= CAST(CONVERT(varchar(8), GETDATE(), 112) AS int) THEN tap.DT_Vencto END) AS prox_venc_int_ge_hoje,
                 -- fallback: menor vencimento em aberto (mesmo que já vencido)
-                MIN(CASE 
-                            WHEN tap.DT_Pago = 0 
-                            THEN tap.DT_Vencto 
-                        END) AS prox_venc_int_any
-            FROM
-                TB_Acordos_Pagto AS tap
-            GROUP BY
-                tap.ID_Acordo
+                MIN(CASE WHEN tap.DT_Pago = 0 THEN tap.DT_Vencto END) AS prox_venc_int_any
+            FROM TB_Acordos_Pagto AS tap
+            GROUP BY tap.ID_Acordo
             )
             SELECT
                 ta.ID_Acordo,
                 ta.ID_Usuario_Acordo,
                 ta.CD_Situacao,
-                ta.VL_Acordo,
-                ta.QT_Parcelas,
+                pm.loja_grupo as grupo,
+                pm.cod_loja_grupo as cod_grupo,
+                pm.loja as sub_grupo,
+                pm.cod_loja as cod_sub_grupo,
+                ta.VL_Acordo as vl_acordo,
+                ta.QT_Parcelas as qt_parcelas,
                 ta.VL_Entrada,
                 ta.VL_Parcela,
                 ta.VL_Financiado,
                 ta.DT_Registro as dt_acordo,
+                ta.HR_Registro as hr_acordo,
+                CONVERT(char(19), DATEADD(HOUR, (ta.HR_Registro / 1000000), CONVERT(datetime, CONVERT(char(8), ta.DT_Registro), 112)), 120) AS dt_acordo_dh,
                 pgto.menor_vencimento as menor_vencimento_acordo,
                 pm.menor_vencimento as menor_vencimento_contrato,
-                DATEDIFF(
-                    DAY,
-                    CONVERT(date, CONVERT(varchar(8), pm.menor_vencimento), 112),
-                    CONVERT(date, CONVERT(varchar(8), ta.DT_Registro), 112)
-                ) AS fase,
-                ta.DT_Cancel,
+                DATEDIFF( DAY, CONVERT(date, CONVERT(varchar(8), pm.menor_vencimento), 112), CONVERT(date, CONVERT(varchar(8), ta.DT_Registro), 112)) AS fase,
+                ta.DT_Cancel as dt_cancelado,
                 pgto.qt_parcelas_abertas,
                 pgto.qt_parcelas_pagas,
-                pgto.total_apagar,
-                pgto.total_apagar_pago,
-                pgto.total_pago,
+                pgto.total_apagar vl_apagar,
+                pgto.total_apagar_pago as vl_pago,
+                pgto.total_apagar - pgto.total_apagar_pago as vl_aberto,
+                pgto.total_pago as vl_pago_real,
                 -- Próximo vencimento em aberto como DATE
-                CONVERT(date, CONVERT(varchar(8),
-                    COALESCE(pgto.prox_venc_int_ge_hoje, pgto.prox_venc_int_any)
-                ), 112) AS prox_vencimento_aberto
-            FROM
-                TB_Acordos AS ta
-            INNER JOIN PrestMin AS pm
-                ON
-                pm.ID_Acordo = ta.ID_Acordo
-                AND pm.CPF_CGC = ta.CPF_CGC
-            INNER JOIN Pagamentos AS pgto
-                ON
-                pgto.ID_Acordo = ta.ID_Acordo
-            WHERE 1 = 1
+                CONVERT(date, CONVERT(varchar(8), COALESCE(pgto.prox_venc_int_ge_hoje, pgto.prox_venc_int_any)), 112) AS prox_vencimento_aberto
+            FROM TB_Acordos AS ta
+            INNER JOIN PrestMin AS pm ON pm.ID_Acordo = ta.ID_Acordo AND pm.CPF_CGC = ta.CPF_CGC
+            INNER JOIN Pagamentos AS pgto ON pgto.ID_Acordo = ta.ID_Acordo
+            WHERE 1 = 1 
             and ta.DT_Registro between ? and ? 
-            and ta.DT_Cancel = ?";
+            -- and ta.DT_Cancel = ?
+            ";
+    }
+
+    private function ajeitaDadosIgualAQC($dados) {
+
+        $ar_padrao = [
+            "size" => "auto",
+            "click" => "",
+            "qtd_quebra" => 0,
+            "valor_quebra" => 0,
+            "valor_pago" => 0,
+            "valor_aberto" => 0,
+            "qtd" => 0,
+            "valor" => 0,
+            "add_valor" => 0,
+            "sub" => []
+        ];
+
+        $ar_sub = $ar_padrao;
+        unset($ar_sub['sub']);
+        $retorno = [];
+        $retorno_linhas = [];
+        foreach ($dados as $key => $v) {
+            $v['vl_quebra'] = 0;
+            $v['qtd_quebra'] = 0;
+            if ($v['dt_cancelado'] > 0) {
+                $v['vl_quebra'] = $v['vl_aberto'];
+                $v['vl_aberto'] = 0;
+                $v['qtd_quebra'] = 1;
+            }
+
+            if (!isset($retorno[$v['grupo']])) {
+                $retorno[$v['grupo']] = $ar_padrao;
+                $retorno[$v['grupo']]['click'] = $v['cod_grupo'];
+            }
+            $retorno[$v['grupo']]['valor']          += $v['vl_acordo'];
+            $retorno[$v['grupo']]['valor_aberto']   += $v['vl_aberto'];
+            $retorno[$v['grupo']]['valor_pago']     += $v['vl_pago'];
+            $retorno[$v['grupo']]['valor_quebra']   += $v['vl_quebra'];
+            $retorno[$v['grupo']]['qtd_quebra']     += $v['qtd_quebra'];
+            $retorno[$v['grupo']]['qtd']++;
+
+            if (!isset($retorno[$v['grupo']]['sub'][$v['sub_grupo']])) {
+                $retorno[$v['grupo']]['sub'][$v['sub_grupo']] = $ar_sub;
+                $retorno[$v['grupo']]['sub'][$v['sub_grupo']]['click'] = "{$v['cod_grupo']}-{$v['cod_sub_grupo']}";
+            }
+            $retorno[$v['grupo']]['sub'][$v['sub_grupo']]['valor']          += $v['vl_acordo'];
+            $retorno[$v['grupo']]['sub'][$v['sub_grupo']]['valor_aberto']   += $v['vl_aberto'];
+            $retorno[$v['grupo']]['sub'][$v['sub_grupo']]['valor_pago']     += $v['vl_pago'];
+            $retorno[$v['grupo']]['sub'][$v['sub_grupo']]['valor_quebra']   += $v['vl_quebra'];
+            $retorno[$v['grupo']]['sub'][$v['sub_grupo']]['qtd_quebra']     += $v['qtd_quebra'];
+            $retorno[$v['grupo']]['sub'][$v['sub_grupo']]['qtd']++;
+            //LINHAS
+            $retorno_linhas[] = [
+                "main_codigo" => $v['cod_grupo'],
+                "main" => $v['grupo'],
+                "sub_codigo" => $v['cod_sub_grupo'],
+                "sub" => $v['sub_grupo'],
+                "data" => $v['dt_acordo_dh'],
+                "fase" => $v['fase'],
+                "aco_tipo_pagamento" => $v['qt_parcelas'] > 0 ? 'P' : 'A',
+                "descartar" => "N",
+                "vl_parcelas_pagas" => $v['vl_pago'] ?: null,
+                "vl_parcelas_abertas" => $v['vl_aberto'],
+                "qtd_acordos" => !empty($v['qt_acordos']) ? $v['qt_acordos'] : 1,
+                "vl_acordos" => $v['vl_acordo'],
+                "qtd_quebras" => $v['qtd_quebra'],
+                "vl_quebras" => $v['vl_quebra'],
+                "origem" => $retorno[$v['grupo']]['sub'][$v['sub_grupo']]['click'],
+            ];
+        }
+        return [
+            "retorno" => true,
+            "dados" => [
+                "acordos" =>
+                [
+                    'por_origem' => $retorno,
+                    'dados_consulta' => $retorno_linhas
+                ]
+            ],
+            "mensagem" => "OK"
+        ];
     }
 
     public function dadosDashboardPadrao(Request $request) {
@@ -115,29 +189,14 @@ class DashboardPadraoController extends Controller {
 
             $db = new sqlServerController();
             $sql = $this->queryDashboard();
-            $this->dataInicial = "20250902";
-            $dados = $db->select($sql, [$this->dataInicial, $this->dataFinal, 0]);
-
-            dd($dados);
-
-
-
-
-
-
-
-
-
-
-
-
-            ///////
-            $dados_request = ControllerUtils::excutarChamadaApiAqc('dash_acordos', "aqc_bi_padrao", ["data_ini" => $this->dataInicial, "data_fim" => $this->dataFinal], $this->tempo_execucao, true);
-            
-            if($dados_request['retorno'] === false){
+            // $this->dataInicial = "20250903";
+            $dados = $db->select($sql, [$this->dataInicial, $this->dataFinal]);
+            // dd($dados);
+            $dados_request = $this->ajeitaDadosIgualAQC($dados);
+            if ($dados_request['retorno'] === false) {
                 return ControllerUtils::jsonResponse(false, [], $dados_request['mensagem']);
             }
-            
+
             $dados_retorno['header'] = $this->trataDadosHeader($dados_request);
             //$dados_retorno['grafico_pagamentos'] = $this->trataDadosPagamentos($dados_request['dados']['acordos']['pagamentos']);
             // Salva a variável de sessão
@@ -415,11 +474,12 @@ class DashboardPadraoController extends Controller {
                 $total += $value['qtd'];
                 $total_valor += $value['valor'];
             }
+            // dd($dados['dados']['acordos']['por_origem']);
             foreach ($dados['dados']['acordos']['por_origem'] as $key => $value) {
                 if (!isset($header[$key])) {
                     $header[$key] = $ar_padrao;
                     $header[$key]['size']   = $value['size'] ?? "auto";
-                    $header[$key]['color']  = $color[$i];
+                    $header[$key]['color']  = $color[0];
                     $i++;
                 }
                 if (!empty($value['sub'])) {
@@ -429,18 +489,18 @@ class DashboardPadraoController extends Controller {
                             'value' => $value2['qtd'],
                             'valor' => $value2['valor'],
                             'size' => $value2['size'],
-                            'color' => $color[$i - 1],
+                            'color' => $color[0],
                             'add_valor' => $value2['add_valor'],
                             'click' => 'S',
                             'click_key' => $value2['click']
                         ];
                         $fields   = [];
-                        $fields[] = ["text" => "Tkt. Médio", "value" => ($value2['qtd'] > 0 ? ($value2['valor'] / $value2['qtd']) : 0), "decimal" => 2];
-                        $fields[] = ["text" => "Val. Acordos", "value" => $value2['valor'], "decimal" => 2];
-                        $fields[] = ["text" => "Val. Pagos", "value" => $value2['valor_pago'], "decimal" => 2];
-                        $fields[] = ["text" => "Val. Abertos", "value" => $value2['valor_aberto'], "decimal" => 2];
-                        $fields[] = ["text" => "Val. Quebras", "value" => $value2['valor_quebra'], "decimal" => 2];
-                        $fields[] = ["text" => "Qtd. Quebras", "value" => $value2['qtd_quebra'], "decimal" => 0];
+                        $fields[] = ["text" => "Tkt. Médio", "value" => ($value2['qtd'] > 0 ? ($value2['valor'] / $value2['qtd']) : 0), "decimal" => 2, "principal" => ""];
+                        $fields[] = ["text" => "Val. Acordos", "value" => $value2['valor'], "decimal" => 2, "principal" => true];
+                        $fields[] = ["text" => "Val. Pagos", "value" => $value2['valor_pago'], "decimal" => 2, "principal" => false];
+                        $fields[] = ["text" => "Val. Abertos", "value" => $value2['valor_aberto'], "decimal" => 2, "principal" => false];
+                        $fields[] = ["text" => "Val. Quebras", "value" => $value2['valor_quebra'], "decimal" => 2, "principal" => false];
+                        $fields[] = ["text" => "Qtd. Quebras", "value" => $value2['qtd_quebra'], "decimal" => 0, "principal" => ""];
                         $header[$key]['sub'][$key2]['fields'] = $fields;
                     }
                 } else {
@@ -449,14 +509,14 @@ class DashboardPadraoController extends Controller {
                 $header[$key]['value'] = $value['qtd'];
                 $header[$key]['valor'] = $value['valor'];
                 $header[$key]['click_key'] = $value['click'];
-                
+
                 $fields   = [];
-                $fields[] = ["text" => "Tkt. Médio", "value" => ($value['qtd'] > 0 ? ($value['valor'] / $value['qtd']) : 0), "decimal" => 2];
-                $fields[] = ["text" => "Val. Acordos", "value" => $value['valor'], "decimal" => 2];
-                $fields[] = ["text" => "Val. Pagos", "value" => $value['valor_pago'], "decimal" => 2];
-                $fields[] = ["text" => "Val. Abertos", "value" => $value['valor_aberto'], "decimal" => 2];
-                $fields[] = ["text" => "Val. Quebras", "value" => $value['valor_quebra'], "decimal" => 2];
-                $fields[] = ["text" => "Qtd. Quebras", "value" => $value['qtd_quebra'], "decimal" => 0];
+                $fields[] = ["text" => "Tkt. Médio", "value" => ($value['qtd'] > 0 ? ($value['valor'] / $value['qtd']) : 0), "decimal" => 2, "principal" => ""];
+                $fields[] = ["text" => "Val. Acordos", "value" => $value['valor'], "decimal" => 2, "principal" => true];
+                $fields[] = ["text" => "Val. Pagos", "value" => $value['valor_pago'], "decimal" => 2, "principal" => false];
+                $fields[] = ["text" => "Val. Abertos", "value" => $value['valor_aberto'], "decimal" => 2, "principal" => false];
+                $fields[] = ["text" => "Val. Quebras", "value" => $value['valor_quebra'], "decimal" => 2, "principal" => false];
+                $fields[] = ["text" => "Qtd. Quebras", "value" => $value['qtd_quebra'], "decimal" => 0, "principal" => false];
                 $header[$key]['fields'] = $fields;
             }
 

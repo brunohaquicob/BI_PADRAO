@@ -229,117 +229,133 @@ function montaDivsHeader(dados, routeDetalhes) {
     // FOOTER
     let header = dados.divs;
     let total = dados.total_qtd;
-    let i = 0;
+
     $('#headers-dash').empty();
     $('#headers-dash-subs').empty();
+    const makeId = (str) => String(str)
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // remove acentos
+        .replace(/[^a-zA-Z0-9_-]/g, '_')                 // troca tudo que não for [a-z0-9_-] por _
+        .replace(/^_+|_+$/g, '');                        // tira underscores nas pontas
+
+    // dentro de montaDivsHeader, antes dos loops:
+    // coloca isso no topo da função, antes dos loops
+    const renderTable = (title, icon, fields) => {
+        let s = '<table class="w100perc"><thead>';
+        s += `<tr><th colspan="2" class="text-center"><span class="tooltip-text">${title}</span> <i class="${icon}"></i></th></tr>`;
+        s += '<tbody>';
+
+        // TOTAL = primeiro field com principal === true (e normalmente decimal 2)
+        const baseIdx = fields.findIndex(f => f && f.principal === true);
+        const baseVal = baseIdx >= 0 ? Number(fields[baseIdx].value || 0) : 0;
+
+        fields.forEach((f, idx) => {
+            if (!f) return;
+            const valor = Number(f.value || 0);
+            const isTotal = f.principal === true;
+            const isMoney2 = Number(f.decimal) === 2;
+            const showPct = (f.principal === false) && isMoney2 && baseVal > 0;
+
+            const rowClass = isTotal ? 'row-total' : '';
+            const badge = isTotal ? ' <span class="badge-total">TOTAL</span>' : '';
+            const pctHtml = showPct
+                ? ` <small class="value-pct">(${doubleToMoney((valor / baseVal) * 100, 2)}%)</small>`
+                : '';
+
+            const classCampo = f.class || 'text-right';
+
+            s += `<tr class="${rowClass}" style="font-size:12px;">`;
+            s += `<td>${f.text}:${badge}</td>`;
+            s += `<td class="${classCampo}"><b>${doubleToMoney(valor, f.decimal)}</b>${pctHtml}</td>`;
+            s += `</tr>`;
+        });
+
+        s += '</tbody></table>';
+        return s;
+    };
+
+
     for (const k in header) {
-        i++;
-        if (header.hasOwnProperty(k)) {
-            let val = header[k];
-            // Calcula o percentual com base no valor do item em relação ao valor total
-            if (k !== undefined) {
-                //Monta Subs
-                var class_sub = "";
-                var attr_extra = "";
-                if (val.sub !== undefined) {
-                    let total_main = val.value;
-                    var subs = val.sub;
-                    for (const k2 in subs) {
-                        if (subs.hasOwnProperty(k2)) {
-                            let val = subs[k2];
-                            let total = total_main;
-                            var qtd = (val.value);
-                            var valor = (val.valor);
-                            var percent = (qtd / total) * 100;
-                            var click = val.click;
-                            let classe_click = '';
-                            if (click == 'S' && qtd > 0) {
-                                classe_click = `click_detalhes`;
-                            }
+        if (!header.hasOwnProperty(k)) continue;
 
-                            attr_extra = k.replace(/\s+/g, '_');
-                            let icone = val.icone ?? "far fa-handshake";
-                            var s = '<table class="w100perc"><thead>';
-                            s += `<tr><th colspan="2" class="text-center"><span class="tooltip-text">${k2}</span> <i class="${icone}"></i></th></tr>`;
-                            s += '<tbody>';
+        const val = header[k];
+        if (k === undefined) continue;
 
-                            val.fields.forEach(field => {
-                                let valorCampo = field.value ?? 0;
-                                let classCampo = field.class ?? 'text-right';
-                                s += `<tr style="font-size:12px;">`;
-                                s += `<td>${field.text}: </td>`;
-                                s += `<td class="${classCampo}"><b>${doubleToMoney(valorCampo, field.decimal)}</b></td></tr>`;
-                            });
-                            s += '</tbody></table>';
-                            // Calcula o percentual com base no valor do item em relação ao valor total
-                            let click_var1 = val.click_key;
-                            let class_col = "col-" + val.size;
-                            if (val.size == "" || val.size == 'auto') {
-                                class_col = "col";
-                            }
-                            var retorno = "<div class='" + class_col + " " + attr_extra + " d-none " + classe_click + "' var1='" + click_var1 + "' var_title='" + k + " - " + k2 + "' route='" + routeDetalhes + "'>";
-                            retorno += '<div class="info-box bg-' + val.color + '" style="margin:1px;">'
-                            retorno += '<div class="info-box-content">'
-                            retorno += '<span class="info-box-text">' + s + '</span>'
-                            retorno += '<div class="progress">'
-                            retorno += '<div class="progress-bar progress-bar-striped" style="width: ' + percent + '%;"></div>'
-                            retorno += '</div>'
-                            retorno += '<span class="progress-description">'
-                            retorno += '<i><b>' + (doubleToMoney(qtd, 0)) + ' acordos</b> [' + (doubleToMoney(percent, 2)) + '%] de <b>' + (doubleToMoney(total, 0)) + '</b> </i>'
-                            retorno += '</span>'
-                            retorno += '</div>'
-                            retorno += '</div>'
-                            retorno += '</div>'
-                            $('#headers-dash-subs').append(retorno);
-                            class_sub = 'tem_subs';
-                        }
-                    }
-                }
-                //Monta Principais
-                var qtd = (val.value);
-                var valor = (val.valor);
-                var percent = (qtd / total) * 100;
-                var click = val.click;
-                let classe_click = '';
-                if (click == 'S' && qtd > 0) {
-                    classe_click = `click_detalhes`;
-                }
-                let icone = val.icone ?? "far fa-handshake";
-                var s = '<table class="w100perc"><thead>';
-                s += `<tr><th colspan="2" class="text-center"><span class="tooltip-text">${k}</span> <i class="${icone}"></i></th></tr>`;
-                s += '<tbody>';
+        // ID seguro para este MAIN
+        const mainId = makeId(k);
 
-                val.fields.forEach(field => {
-                    let valorCampo = field.value ?? 0;
-                    let classCampo = field.class ?? 'text-right';
-                    s += `<tr style="font-size:12px;">`;
-                    s += `<td>${field.text}: </td>`;
-                    s += `<td class="${classCampo}"><b>${doubleToMoney(valorCampo, field.decimal)}</b></td></tr>`;
-                });
-                s += '</tbody></table>';
-                // Calcula o percentual com base no valor do item em relação ao valor total
-                let click_var1 = val.click_key;
-                let class_col = "col-" + val.size;
-                if (val.size == "" || val.size == 'auto') {
-                    class_col = "col";
-                }
-                var retorno = "<div class='" + class_col + " " + class_sub + " " + classe_click + "' main_card = '" + attr_extra + "' var1='" + click_var1 + "' var_title='" + k + "' route='" + routeDetalhes + "'>";
-                retorno += '<div class="info-box bg-' + val.color + '" style="margin:1px;">'
-                retorno += '<div class="info-box-content">'
-                retorno += '<span class="info-box-text">' + s + '</span>'
-                retorno += '<div class="progress">'
-                retorno += '<div class="progress-bar progress-bar-striped" style="width: ' + percent + '%;"></div>'
-                retorno += '</div>'
-                retorno += '<span class="progress-description">'
-                retorno += '<i><b>' + (doubleToMoney(qtd, 0)) + ' acordos</b> [' + (doubleToMoney(percent, 2)) + '%] de <b>' + (doubleToMoney(total, 0)) + '</b> </i>'
-                retorno += '</span>'
-                retorno += '</div>'
-                retorno += '</div>'
-                retorno += '</div>'
-                $('#headers-dash').append(retorno);
+        // ===== SUBS =====
+        let class_sub = "";                 // reset por MAIN
+        if (val.sub !== undefined) {
+            const total_main = val.value;
+            const subs = val.sub;
+            for (const k2 in subs) {
+                if (!subs.hasOwnProperty(k2)) continue;
+                const vsub = subs[k2];          // evite reusar "val"
+
+                const total = total_main;
+                const qtd = vsub.value;
+                const valor = vsub.valor;
+
+                if (valor == 0 || valor === undefined) continue;
+
+                const percent = total > 0 ? Math.min(100, (qtd / total) * 100) : 0;
+
+                const click = vsub.click;
+                const classe_click = (click == 'S' && qtd > 0) ? 'click_detalhes' : '';
+                const icone = vsub.icone ?? "far fa-handshake";
+
+                // monta tabela...
+                let s = renderTable(k2, icone, vsub.fields);
+
+                const click_var1 = vsub.click_key;
+                const class_col = "card-item";
+
+                let retorno = `<div class="${class_col} d-none ${classe_click}"
+                    data-main-id="${mainId}"
+                    var1="${click_var1}"
+                    var_title="${k} - ${k2}"
+                    data-main="${k} - ${k2}" 
+                    data-icon="${icone}"     
+                    data-qtd="${qtd}"        
+                    data-total="${total}"    
+                    route ="${routeDetalhes}">`;
+                retorno += `<div class="info-box bg-${vsub.color} h-uniform">`;
+                retorno += '<div class="info-box-content">';
+                retorno += `<span class="info-box-text">${s}</span>`;
+                retorno += '<div class="progress"><div class="progress-bar progress-bar-striped progress-bar-animated" style="width:' + percent + '%;"></div></div>';
+                retorno += `<span class="progress-description"><i><b>${doubleToMoney(qtd, 0)} acordos</b> [${doubleToMoney(percent, 2)}%] de <b>${doubleToMoney(total, 0)}</b></i></span>`;
+                retorno += '</div></div></div>';
+
+                $('#headers-dash-subs').append(retorno);
+                class_sub = 'tem_subs';
             }
         }
+
+        // ===== MAIN =====
+        const qtd = val.value;
+        const valor = val.valor;
+        const percent = total > 0 ? Math.min(100, (qtd / total) * 100) : 0;
+        const click = val.click;
+        const classe_click = (click == 'S' && qtd > 0) ? 'click_detalhes' : '';
+        const icone = val.icone ?? "far fa-handshake";
+        let s = renderTable(k, icone, val.fields);
+
+        const click_var1 = val.click_key;
+        const class_col = "card-item";
+        const safeTitle = String(k).replace(/"/g, '&quot;');
+
+        let retorno =
+            `<div class="${class_col} ${class_sub} ${classe_click}" data-main-id="${mainId}" var1="${click_var1}" var_title="${safeTitle}" data-main="${safeTitle}" data-icon="${icone}" data-qtd="${qtd}" data-total="${total}" route="${routeDetalhes}">`;
+        retorno += `<div class="info-box bg-${val.color} h-uniform">`;
+        retorno += '<div class="info-box-content">';
+        retorno += `<span class="info-box-text">${s}</span>`;
+        retorno += '<div class="progress"><div class="progress-bar progress-bar-striped progress-bar-animated" style="width:' + percent + '%;"></div></div>';
+        retorno += `<span class="progress-description"><i><b>${doubleToMoney(qtd, 0)} acordos</b> [${doubleToMoney(percent, 2)}%] de <b>${doubleToMoney(total, 0)}</b></i></span>`;
+        retorno += '</div></div></div>';
+
+        $('#headers-dash').append(retorno);
     }
+
 
     $('.tooltip-text').each(function () {
         const fullText = $(this).text().trim();
@@ -349,34 +365,76 @@ function montaDivsHeader(dados, routeDetalhes) {
             const shortText = fullText.substring(0, maxLength) + '...';
             $(this)
                 .text(shortText)
-                .attr('title', fullText); // nativo do navegador (tooltip)
+                .attr('title', fullText);
         }
     });
-
 
     $('.tem_subs').on('click', function () {
-        let attr_extra = $(this).attr('main_card');
-        // Verifica se as divs filhas associadas estão visíveis
-        let isVisible = $(`.${attr_extra}`).first().hasClass('d-none');
-        // Esconde todas as divs filhas
+        $('.tem_subs').removeClass('main-active');
+        $(this).addClass('main-active');
+
+        const id = $(this).attr('data-main-id');  // use attr, não .data('main-id')
+
         $('#headers-dash-subs').children().addClass('d-none');
-        // Se as divs associadas estavam escondidas, mostra-as; caso contrário, mantém-nas escondidas
-        if (isVisible) {
-            $(`.${attr_extra}`).removeClass('d-none');
+        const $targets = $(`#headers-dash-subs [data-main-id="${id}"]`);
+        if ($targets.length) {
+            $targets.removeClass('d-none');
+            $('#subs-section').removeClass('d-none');
+        } else {
+            $('#subs-section').addClass('d-none');
+        }
+
+        // atualiza cabeçalho
+        const fmt = (n, d = 0) => doubleToMoney(n, d);
+        const mainName = $(this).data('main') || $(this).attr('var_title') || '';
+        const icon = $(this).data('icon') || 'far fa-handshake';
+        const qtd = Number($(this).data('qtd') || 0);
+        const tot = Number($(this).data('total') || 0);
+        const pct = tot > 0 ? (qtd / tot) * 100 : 0;
+        const label = (qtd === 1 ? 'acordo' : 'acordos');
+
+        $('#subs-title').empty().append($('<i>', { class: icon, 'aria-hidden': 'true' })).append(' ').append(document.createTextNode(mainName));
+        $('#subs-subtitle').text(`${fmt(qtd, 0)} ${label} [${fmt(pct, 2)}%] de ${fmt(tot, 0)}`);
+
+        if (window.innerWidth < 1200) {
+            $('html, body').animate({ scrollTop: $('#subs-section').offset().top - 60 }, 200);
         }
     });
 
+    // botão de fechar subs
+    $(document).on('click', '.close-subs', function () {
+        $('#subs-section').addClass('d-none');
+        $('#headers-dash-subs').children().addClass('d-none');
+        $('#subs-title').text('Detalhes');
+        $('#subs-subtitle').text('clique em um card para ver os sub-itens');
+    });
+
+
     $('.click_detalhes').on('click', function () {
-        var codigo = $(this).attr('var1');
-        var title = $(this).attr('var_title');
-        var rota = $(this).attr('route');
+        const codigo = $(this).attr('var1');
+        const rota = $(this).attr('route');
+
+        // dados para o título
+        const titleText = $(this).data('main') || $(this).attr('var_title') || '';
+        const icon = $(this).data('icon') || 'far fa-handshake';
+        const qtdCard = Number($(this).data('qtd') || 0);
+        const totRef = Number($(this).data('total') || 0);
+        const pctCard = totRef > 0 ? (qtdCard / totRef) * 100 : 0;
+        const label = (qtdCard === 1 ? 'acordo' : 'acordos');
+
+        const tituloHtml = `
+    <span class="d-inline-flex align-items-center">
+      <i class="${icon} mr-1" aria-hidden="true"></i> ${titleText}
+    </span>
+    <small class="text-muted ml-2">
+      ${doubleToMoney(qtdCard, 0)} ${label} [${doubleToMoney(pctCard, 2)}%] de ${doubleToMoney(totRef, 0)}
+    </small>
+  `;
 
         const requestParams = {
             method: 'POST',
             url: rota,
-            data: {
-                'codigo': codigo
-            },
+            data: { 'codigo': codigo },
             formId: ''
         };
 
@@ -384,39 +442,36 @@ function montaDivsHeader(dados, routeDetalhes) {
         AjaxRequest.sendRequest(requestParams).then(response => {
             removeLoading("loadingPage");
             if (response.data !== undefined && response.status === true) {
-
                 try {
-                    //Montar Graficos div1
-                    var grafico_div1 = response.data.grafico_fases_qtd;
-                    CriarGraficos.criarDonutchart("grafico_01_01_detalhes", grafico_div1.data, grafico_div1.seriesname, grafico_div1.title, grafico_div1.subtitle);
-                    var grafico_div1 = response.data.grafico_fases_valor;
-                    CriarGraficos.criarDonutchart("grafico_02_02_detalhes", grafico_div1.data, grafico_div1.seriesname, grafico_div1.title, grafico_div1.subtitle, 2);
-                    //PieMult
-                    var currentHighChartsPie = null;
-                    currentHighChartsPie = new HighChartsPieChartMult(response.data.grafico_pie_mult_qtd, 0, "Fases", "Tipo Pagamento");
-                    var currentHighChartsPie2 = null;
-                    currentHighChartsPie2 = new HighChartsPieChartMult(response.data.grafico_pie_mult_valor, 2, "Fases", "Tipo Pagamento");
+                    // gráficos (como já estava)
+                    var g = response.data.grafico_fases_qtd;
+                    CriarGraficos.criarDonutchart("grafico_01_01_detalhes", g.data, g.seriesname, g.title, g.subtitle);
+                    g = response.data.grafico_fases_valor;
+                    CriarGraficos.criarDonutchart("grafico_02_02_detalhes", g.data, g.seriesname, g.title, g.subtitle, 2);
 
-                    var grafico_div1 = response.data.grafico_tipo_pagamento_qtd;
-                    CriarGraficos.criarDonutchart("grafico_03_detalhes", grafico_div1.data, grafico_div1.seriesname, grafico_div1.title, grafico_div1.subtitle);
-                    var grafico_div1 = response.data.grafico_tipo_pagamento_valor;
-                    CriarGraficos.criarDonutchart("grafico_04_detalhes", grafico_div1.data, grafico_div1.seriesname, grafico_div1.title, grafico_div1.subtitle, 2);
+                    var currentHighChartsPie = new HighChartsPieChartMult(response.data.grafico_pie_mult_qtd, 0, "Fases", "Tipo Pagamento");
+                    var currentHighChartsPie2 = new HighChartsPieChartMult(response.data.grafico_pie_mult_valor, 2, "Fases", "Tipo Pagamento");
 
-                    var grafico_div1 = response.data.grafico_data_qtd;
-                    criarStockDiaHora("grafico_05_detalhes", grafico_div1, "Acordos/Quantidade", 0,);
-                    var grafico_div1 = response.data.grafico_data_valor;
-                    criarStockDiaHora("grafico_06_detalhes", grafico_div1, "Acordos/Valores", 2);
+                    g = response.data.grafico_tipo_pagamento_qtd;
+                    CriarGraficos.criarDonutchart("grafico_03_detalhes", g.data, g.seriesname, g.title, g.subtitle);
+                    g = response.data.grafico_tipo_pagamento_valor;
+                    CriarGraficos.criarDonutchart("grafico_04_detalhes", g.data, g.seriesname, g.title, g.subtitle, 2);
 
+                    g = response.data.grafico_data_qtd;
+                    criarStockDiaHora("grafico_05_detalhes", g, "Acordos/Quantidade", 0);
+                    g = response.data.grafico_data_valor;
+                    criarStockDiaHora("grafico_06_detalhes", g, "Acordos/Valores", 2);
 
-                    $('#modalDetalhesTitle').html("Detalhes " + title);
+                    // >>> título no mesmo formato dos SUBS
+                    $('#modalDetalhesTitle').html(tituloHtml);
                     $('#modalDetalhes').modal('show');
                 } catch (error) {
                     console.error('Erro ao analisar JSON:', error);
-                    //$('#modalHistoricoBody').append('<p>Erro ao analisar o histórico.</p>');
                 }
             }
         });
     });
+
 }
 
 function criarStockDiaHora(containerId, data, title, decimalPlaces = 0, separator = '.') {
@@ -524,7 +579,7 @@ function criarStockDiaHora(containerId, data, title, decimalPlaces = 0, separato
                         count: 6,
                         text: '6M'
                     },
-                    
+
                 ],
                 selected: 0 // Seleciona o primeiro botão por padrão
             },
