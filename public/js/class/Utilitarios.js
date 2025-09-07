@@ -981,3 +981,97 @@ function renderSmallBoxes(items, opts = {}) {
         ));
     }
 }
+
+/**
+ * Cria um controlador de auto-refresh com contador visual
+ *
+ * @param {Object} opts
+ * @param {string|HTMLElement} opts.select - seletor ou elemento <select> com os intervalos (em ms)
+ * @param {string|HTMLElement} opts.badge  - seletor ou elemento <span> para mostrar o countdown
+ * @param {Function} opts.onRefresh        - função a ser executada a cada refresh
+ */
+function setupAutoRefresh({ select, badge, onRefresh }) {
+    const $select = typeof select === "string" ? document.querySelector(select) : select;
+    const $badge = typeof badge === "string" ? document.querySelector(badge) : badge;
+
+    let refreshMs = 0;
+    let countdownId = null;
+    let remainingMs = 0;
+
+    function fmtMMSS(ms) {
+        const s = Math.max(0, Math.floor(ms / 1000));
+        const m = Math.floor(s / 60);
+        const ss = String(s % 60).padStart(2, "0");
+        return `${m}:${ss}`;
+    }
+
+    function setBadgeHTML(html) {
+        if ($badge) $badge.innerHTML = html;
+    }
+
+    function updatePillState(msRemaining, active) {
+        if (!$badge) return;
+
+        $badge.classList.remove("refresh-on", "refresh-off", "refresh-soon");
+
+        if (!active) {
+            $badge.classList.add("refresh-off");
+            setBadgeHTML(`<i class="fas fa-bolt mr-1"></i>Desativado`);
+            return;
+        }
+
+        const secs = Math.max(0, Math.floor(msRemaining / 1000));
+        const m = Math.floor(secs / 60);
+        const s = String(secs % 60).padStart(2, "0");
+        const label = `${m}:${s}`;
+
+        if (secs <= 10) {
+            $badge.classList.add("refresh-soon");
+            setBadgeHTML(`<i class="fas fa-hourglass-half mr-1"></i>Atualiza em ${label}`);
+        } else {
+            $badge.classList.add("refresh-on");
+            setBadgeHTML(`<i class="fas fa-sync-alt mr-1"></i>Atualiza em ${label}`);
+        }
+    }
+
+    function stopAutoRefresh() {
+        if (countdownId) { clearInterval(countdownId); countdownId = null; }
+        remainingMs = 0;
+        updatePillState(remainingMs, false);
+    }
+
+    function startAutoRefresh(ms) {
+        stopAutoRefresh();
+        refreshMs = ms;
+        remainingMs = ms;
+        updatePillState(remainingMs, true);
+
+        countdownId = setInterval(async () => {
+            remainingMs -= 1000;
+            if (remainingMs <= 0) {
+                try {
+                    if (typeof onRefresh === "function") await onRefresh();
+                } finally {
+                    remainingMs = refreshMs;
+                }
+            }
+            updatePillState(remainingMs, true);
+        }, 1000);
+    }
+
+    // eventos
+    if ($select) {
+        $select.addEventListener("change", function () {
+            const valor = parseInt(this.value, 10) || 0;
+            if (valor > 0) startAutoRefresh(valor);
+            else stopAutoRefresh();
+        });
+
+        // init no load
+        const valor = parseInt($select.value, 10) || 0;
+        if (valor > 0) startAutoRefresh(valor); else stopAutoRefresh();
+    }
+
+    // retorno: permite controle manual se precisar
+    return { startAutoRefresh, stopAutoRefresh };
+}

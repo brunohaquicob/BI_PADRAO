@@ -271,6 +271,33 @@ class PagesController extends Controller {
         return view('pages.credores.credor_dash_gerencial_acordos', $data);
     }
 
+    //PAINEL
+    public function painel_comercial_01() {
+        if (Auth::check()) {
+            $data = [
+                'equipe_lojas' => $this->equipeLojas(),
+                'meses' => ControllerUtils::gerarUltimosMesesAr(12)
+            ];
+
+            $routeName = Route::currentRouteName();
+            $nameView = RouteView::where('route_name', $routeName)->first();
+            $data['nameView'] = $nameView->name;
+            return view('pages.painel.painel_comercial_01', $data);
+        } else {
+            return redirect()->route('login');
+        }
+    }
+
+    private function equipeLojas() {
+        $dados = ControllerUtils::excutarChamadaApiAqc('get_lojas_equipe', "aqc_bi_padrao", [], $time, true);
+        //dd($dados);
+        if (!isset($dados['retorno']) || $dados['retorno'] === false) {
+            return redirect()->route('unauthorized')->withErrors(['error' => "Erro ao buscar dados API AQC: " . $dados['mensagem']]);
+        }
+
+        return $dados['dados'];
+    }
+
     //MENUS
     public function usuario_cadastro() {
         $users = User::all();
