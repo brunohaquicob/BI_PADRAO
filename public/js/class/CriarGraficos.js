@@ -3141,3 +3141,421 @@ class DashMicro {
         }).format(value);
     }
 }
+
+
+class TimeSeriesChartPro {
+    // ========== Static ==========
+    static _langSet = false;
+    static ensureLang() {
+        if (TimeSeriesChartPro._langSet) return;
+        Highcharts.setOptions({
+            lang: {
+                decimalPoint: ',', thousandsSep: '.',
+                rangeSelectorZoom: "", rangeSelectorFrom: "De", rangeSelectorTo: "Até"
+            },
+            time: { useUTC: false }
+        });
+        TimeSeriesChartPro._langSet = true;
+    }
+
+    // ========== CTOR ==========
+    constructor(opts = {}) {
+        TimeSeriesChartPro.ensureLang();
+
+        const def = {
+            container: null,
+            title: "", subtitle: "",
+            colors: ["#2e7d32", "#1565c0", "#ffc107", "#17a2b8", "#007bff", "#6f42c1", "#fd7e14"],
+
+            // Se você não passar seriesConfig, detecto a partir do dataMap.
+            // seriesConfig: [{ id, name, type, axis: 'left'|'right', format:{decimals,prefix,suffix}, color }]
+            seriesConfig: null,
+
+            // RangeSelector compacto (pode customizar/estender)
+            rangeSelector: {
+                selected: 1, dropdown: 'responsive', inputEnabled: false, buttonSpacing: 10,
+                buttons: [
+                    { type: "day", count: 7, text: "7D" },
+                    { type: "day", count: 15, text: "15D" },
+                    { type: "month", count: 1, text: "1M" },
+                    { type: "month", count: 3, text: "3M" },
+                    { type: "month", count: 6, text: "6M" },
+                    { type: "ytd", text: "YTD" },
+                    { type: "all", text: "Tudo" }
+                ],
+                buttonTheme: { r: 8, padding: 3, style: { fontSize: "11px", fontWeight: 600, whiteSpace: "nowrap" } }
+            },
+
+            // Toolbar de agrupamento (Dia/Semana/Mês)
+            createToolbar: false,
+            toolbarContainer: null, // ex: "#minhaDiv"
+
+            // Formatação default se a série não especificar
+            defaultFormat: { decimals: 2, prefix: "", suffix: "" },
+
+            // Tooltip custom opcional: function (ctx) { ...return html/string... }
+            tooltipFormatter: null
+        };
+
+        this.opts = Object.assign({}, def, opts);
+        if (!this.opts.container) throw new Error("container obrigatório");
+
+        this.chart = null;
+        this._dataMap = null;
+        this._seriesCfgResolved = null; // após resolver cores/format etc
+    }
+
+    // ========== Utils ==========
+    _fmtVal(v, f) {
+        if (v == null || isNaN(v)) return "-";
+        const ff = Object.assign({ decimals: 2, prefix: "", suffix: "" }, f || {});
+        return (ff.prefix || "") + new Intl.NumberFormat("pt-BR", {
+            minimumFractionDigits: ff.decimals, maximumFractionDigits: ff.decimals
+        }).format(Number(v)) + (ff.suffix || "");
+    }
+    _parseUTC(yyyy_mm_dd) {
+        const [y, m, d] = (yyyy_mm_dd || "").split("-").map(Number);
+        return Date.UTC(y || 1970, (m || 1) - 1, d || 1);
+    }
+
+    _detectSeriesKeys(dataMap) {
+        // pega a primeira linha com valores e usa as chaves
+        for (const k of Object.keys(dataMap || {})) {
+            const row = dataMap[k]; if (row && typeof row === "object") {
+                return Object.keys(row);
+            }
+        }
+        return [];
+    }
+
+    _resolveSeriesConfig(dataMap) {
+        // cria config por série com defaults
+        const palette = this.opts.colors || [];
+        const keys = this.opts.seriesConfig
+            ? this.opts.seriesConfig.map(s => s.id)
+            : this._detectSeriesKeys(dataMap);
+
+        const inputCfgMap = new Map();
+        (this.opts.seriesConfig || []).forEach((s, i) => {
+            inputCfgMap.set(s.id, Object.assign({ order: i }, s));
+        });
+
+        const resolved = [];
+        keys.forEach((id, i) => {
+            const base = inputCfgMap.get(id) || {};
+            resolved.push({
+                id,
+                name: base.name || id,
+                type: (base.type || "spline"),
+                axis: base.axis || ((i % 2 === 0) ? "left" : "right"),
+                color: base.color || palette[i % palette.length],
+                format: Object.assign({}, this.opts.defaultFormat, base.format || {})
+            });
+        });
+        return resolved;
+    }
+
+    _buildToolbar() {
+        if (!this.opts.createToolbar) return null;
+
+        const cid = this.opts.container;
+        const target = this.opts.toolbarContainer
+            ? document.querySelector(this.opts.toolbarContainer)
+            : document.getElementById(cid)?.parentElement;
+
+        if (!target) return null;
+
+        const id = `grp-${cid}`;
+        if (target.querySelector(`#${id}`)) return `#${id}`;
+
+        const wrap = document.createElement('div');
+        wrap.className = 'd-flex justify-content-end mb-2';
+        wrap.innerHTML = `
+      <div id="${id}" class="btn-group btn-group-sm" role="group" aria-label="Agrupar">
+        <button type="button" class="btn btn-outline-secondary active" data-unit="day">Dia</button>
+        <button type="button" class="btn btn-outline-secondary" data-unit="week">Semana</button>
+        <button type="button" class="btn btn-outline-secondary" data-unit="month">Mês</button>
+      </div>`;
+        target.insertBefore(wrap, document.getElementById(cid));
+        return `#${id}`;
+    }
+
+    _attachGrouping(containerSelector) {
+        if (!containerSelector) return;
+        const $c = $(containerSelector); if (!$c.length) return;
+
+        const DAY = 24 * 3600 * 1000;
+        const GROUP = {
+            day: { units: [['day', [1]]], range: DAY },
+            week: { units: [['week', [1]]], range: 7 * DAY },
+            month: { units: [['month', [1]]], range: 30 * DAY }
+        };
+
+        const getChart = () => Highcharts.charts.find(c => c && c.renderTo && c.renderTo.id === this.opts.container);
+
+        $c.off("click.tscp").on("click.tscp", "[data-unit]", (ev) => {
+            const ch = getChart(); if (!ch || !ch.xAxis || !ch.xAxis[0]) return;
+
+            const unit = ev.currentTarget.dataset.unit || "day";
+            const cfg = GROUP[unit] || GROUP.day;
+
+            $c.find("[data-unit]").removeClass("active");
+            $(ev.currentTarget).addClass("active");
+
+            ch.xAxis[0].update({ minRange: cfg.range }, false);
+
+            if (Array.isArray(ch.series) && ch.series.length) {
+                ch.series.forEach(s => {
+                    const type = (s.type || s.options.type || "").toLowerCase();
+                    const isColumn = type === "column";
+                    s.update({
+                        dataGrouping: { forced: true, units: cfg.units, approximation: "sum" },
+                        pointRange: isColumn ? cfg.range : null,
+                        pointPadding: isColumn ? 0.05 : undefined,
+                        groupPadding: isColumn ? 0.02 : undefined,
+                        borderWidth: isColumn ? 0 : undefined
+                    }, false);
+                });
+            }
+            ch.redraw();
+        });
+    }
+
+    // monta séries a partir do dataMap e do seriesConfig resolvido
+    _buildSeries(dataMap, seriesCfg) {
+        const dates = Object.keys(dataMap || {}).sort();
+        const buckets = new Map(); // id -> [[t,v],...]
+
+        seriesCfg.forEach(s => buckets.set(s.id, []));
+
+        dates.forEach(dt => {
+            const t = this._parseUTC(dt);
+            const row = dataMap[dt] || {};
+            seriesCfg.forEach(s => {
+                const v = row[s.id];
+                if (v != null) buckets.get(s.id).push([t, Number(v)]);
+            });
+        });
+
+        const out = [];
+        seriesCfg.forEach((s, idx) => {
+            const axisIndex = (s.axis === "right") ? 1 : 0;
+            out.push({
+                id: s.id,
+                name: s.name,
+                type: s.type,
+                data: buckets.get(s.id),
+                color: s.color,
+                yAxis: axisIndex,
+                lineWidth: 3,
+                dashStyle: (s.type === "spline") ? "ShortDash" : "Solid",
+                marker: { enabled: false, radius: 2 },
+                fillOpacity: (s.type.includes("area") ? 0.08 : 0),
+                dataGrouping: { enabled: true },
+                _fmt: s.format
+            });
+        });
+
+        return out;
+    }
+
+    // ========== RENDER ==========
+    render(dataMap) {
+        this._dataMap = dataMap || {};
+        this._seriesCfgResolved = this._resolveSeriesConfig(this._dataMap);
+
+        // yAxes de acordo com quantos lados precisamos
+        const needsRight = this._seriesCfgResolved.some(s => s.axis === "right");
+        const needsLeft = this._seriesCfgResolved.some(s => s.axis !== "right");
+
+        const self = this;
+        const yAxes = [];
+
+        if (needsLeft) {
+            // pega o 1º da esquerda para título/format padrão
+            const leftCfg = this._seriesCfgResolved.find(s => s.axis !== "right") || this._seriesCfgResolved[0];
+            yAxes.push({
+                title: { text: leftCfg ? leftCfg.name : "" },
+                labels: { formatter: function () { return self._fmtVal(this.value, leftCfg.format); } },
+                opposite: false
+            });
+        }
+        if (needsRight) {
+            const rightCfg = this._seriesCfgResolved.find(s => s.axis === "right") || this._seriesCfgResolved[0];
+            yAxes.push({
+                title: { text: rightCfg ? rightCfg.name : "" },
+                labels: { formatter: function () { return self._fmtVal(this.value, rightCfg.format); } },
+                opposite: true
+            });
+        }
+
+        const series = this._buildSeries(this._dataMap, this._seriesCfgResolved);
+        const toolbarSel = this._buildToolbar();
+
+        this.chart = Highcharts.stockChart(this.opts.container, {
+            chart: {
+                backgroundColor: "transparent",
+                spacing: [15, 12, 8, 12],
+                style: { fontFamily: 'system-ui, -apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial' }
+            },
+            credits: { enabled: false },
+            title: { text: this.opts.title, align: "center", y: 0, margin: 0, style: { fontWeight: 600, fontSize: "15px" } },
+            subtitle: { text: this.opts.subtitle, align: "center", y: 14, style: { color: "#6c757d" } },
+            legend: {
+                enabled: true, floating: true, layout: "horizontal", align: "center",
+                verticalAlign: "top", y: 20, padding: 0, margin: 0, itemDistance: 12,
+                symbolRadius: 6, itemStyle: { fontWeight: 500 }
+            },
+
+            rangeSelector: this.opts.rangeSelector,
+
+            navigator: {
+                height: 20, margin: 2, maskFill: "rgba(13,110,253,0.15)", outlineWidth: 0,
+                series: { lineWidth: 1, marker: { enabled: false } }
+            },
+            scrollbar: {
+                barBackgroundColor: "#dee2e6", barBorderRadius: 6, rifleColor: "#adb5bd",
+                trackBackgroundColor: "#f1f3f5", trackBorderWidth: 0
+            },
+
+            xAxis: { minRange: 24 * 3600 * 1000, labels: { style: { color: "#495057" } } },
+            yAxis: yAxes,
+
+            plotOptions: {
+                series: {
+                    label: { enabled: false }, states: { hover: { lineWidthPlus: 1 } },
+                    dataGrouping: { forced: false }, turboThreshold: 0
+                },
+                column: { dataGrouping: { approximation: "sum" } },
+                areaspline: { fillOpacity: 0.08 }
+            },
+
+            tooltip: {
+                shared: true,
+                useHTML: true,
+                borderColor: "#dee2e6",
+                borderRadius: 8,
+                formatter: this.opts.tooltipFormatter
+                    ? function () { return self.opts.tooltipFormatter.call(this, self); }
+                    : function () {
+                        const date = Highcharts.dateFormat("%d/%m/%Y", this.x);
+                        let html = `<div style="min-width:220px"><div style="margin-bottom:6px;font-weight:600">${date}</div>`;
+                        const pts = (this.points && this.points.length)
+                            ? this.points
+                            : (this.point ? [{ series: this.series, y: this.point.y, color: this.point.color }] : []);
+                        pts.forEach(p => {
+                            const f = (p.series && p.series.userOptions && p.series.userOptions._fmt)
+                                ? p.series.userOptions._fmt
+                                : self.opts.defaultFormat;
+                            const dot = `<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${p.color};margin-right:6px"></span>`;
+                            html += `<div style="display:flex;justify-content:space-between;gap:8px">
+                  <span>${dot}${p.series ? p.series.name : ""}</span>
+                  <b>${self._fmtVal(p.y, f)}</b>
+                </div>`;
+                        });
+                        return html + `</div>`;
+                    }
+            },
+
+            series
+        });
+
+        // toolbar (agrupamento)
+        this._attachGrouping(toolbarSel);
+
+        return this.chart;
+    }
+
+    // ========== Métodos públicos ==========
+    getChart() { return this.chart; }
+
+    updateData(newDataMap, redraw = true) {
+        this._dataMap = newDataMap || {};
+        const cfg = this._seriesCfgResolved || this._resolveSeriesConfig(this._dataMap);
+        const seriesData = this._buildSeries(this._dataMap, cfg);
+        if (!this.chart) return;
+
+        // sincroniza série por id (add/remove/replace)
+        const existingIds = new Set(this.chart.series.map(s => s.options.id));
+        const incomingIds = new Set(seriesData.map(s => s.id));
+
+        // remove as que não existem mais
+        this.chart.series.slice().forEach(s => {
+            if (!incomingIds.has(s.options.id)) s.remove(false);
+        });
+
+        // add/atualiza
+        seriesData.forEach(sNew => {
+            const sOld = this.chart.series.find(s => s.options.id === sNew.id);
+            if (sOld) {
+                sOld.update({ data: sNew.data, _fmt: sNew._fmt }, false);
+            } else {
+                this.chart.addSeries(sNew, false);
+            }
+        });
+
+        if (redraw) this.chart.redraw();
+    }
+
+    setRange(fromMs, toMs) {
+        if (this.chart && this.chart.xAxis && this.chart.xAxis[0]) {
+            this.chart.xAxis[0].setExtremes(fromMs, toMs);
+        }
+    }
+
+    // 'day' | 'week' | 'month' (mesmo comportamento da toolbar)
+    setGrouping(unit) {
+        const DAY = 24 * 3600 * 1000;
+        const GROUP = {
+            day: { units: [['day', [1]]], range: DAY },
+            week: { units: [['week', [1]]], range: 7 * DAY },
+            month: { units: [['month', [1]]], range: 30 * DAY }
+        };
+        const cfg = GROUP[unit] || GROUP.day;
+        const ch = this.chart; if (!ch) return;
+
+        if (ch.xAxis && ch.xAxis[0]) ch.xAxis[0].update({ minRange: cfg.range }, false);
+        if (Array.isArray(ch.series)) {
+            ch.series.forEach(s => {
+                const type = (s.type || s.options.type || "").toLowerCase();
+                const isColumn = type === "column";
+                s.update({
+                    dataGrouping: { forced: true, units: cfg.units, approximation: "sum" },
+                    pointRange: isColumn ? cfg.range : null,
+                    pointPadding: isColumn ? 0.05 : undefined,
+                    groupPadding: isColumn ? 0.02 : undefined,
+                    borderWidth: isColumn ? 0 : undefined
+                }, false);
+            });
+        }
+        ch.redraw();
+    }
+
+    // atalhos comuns
+    setRangeShortcut(kind) {
+        const now = new Date();
+        let min, max = now.getTime();
+
+        if (kind === 'thisWeek') {
+            const d = new Date(now); const dow = d.getDay(); const back = (dow === 0 ? 6 : dow - 1);
+            d.setHours(0, 0, 0, 0); d.setDate(d.getDate() - back); min = d.getTime();
+        } else if (kind === '15d') {
+            min = max - 15 * 24 * 3600 * 1000;
+        } else if (kind === 'thisMonth') {
+            const start = new Date(now.getFullYear(), now.getMonth(), 1); min = start.getTime();
+        } else if (kind === 'lastMonth') {
+            const start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+            const end = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
+            min = start.getTime(); max = end.getTime();
+        } else if (kind === '3m') {
+            min = max - 90 * 24 * 3600 * 1000;
+        } else if (kind === '6m') {
+            min = max - 182 * 24 * 3600 * 1000;
+        } else { return; }
+
+        this.setRange(min, max);
+    }
+}
+
+
+

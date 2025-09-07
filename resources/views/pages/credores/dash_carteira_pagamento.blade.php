@@ -105,7 +105,7 @@
     </div>
 
     <div class="card card-primary card-outline">
-        <div class="card-header ui-sortable-handle" style="cursor: move;">
+        <div class="card-header ui-sortable-handle" style="">
             <h3 class="card-title" style="margin-top: 5px;">
                 <i class="fas fa-chart-pie mr-1"></i>
                 <span>Resultados</span>
@@ -116,10 +116,7 @@
                         <a class="nav-link btn-sm ladda-button active" data-style="zoom-out" href="#resultado-aba1" data-toggle="tab">Sintético</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link btn-sm ladda-button" data-style="zoom-out" href="#resultado-aba2" data-toggle="tab">Analítico</a>&nbsp;
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link btn-sm ladda-button" data-style="zoom-out" href="#resultado-aba3" data-toggle="tab">#</a>&nbsp;
+                        <a class="nav-link btn-sm ladda-button" data-style="zoom-out" href="#resultado-aba2" data-toggle="tab">#</a>&nbsp;
                     </li>
                     <li class="nav-item">
                         <button type="button" class="btn btn-tool ladda-button" data-card-widget="collapse" style="margin-top: 5px;"><i class="fas fa-minus"></i></button>
@@ -131,90 +128,44 @@
                 </ul>
             </div>
         </div>
+        <div class="card-header ui-sortable-handle" style="">
+            <section class="col-12 px-0">
+                <div class="row" id="kpis-row"></div>
+            </section>
+        </div>
         <div class="card-body" id="card_resultados">
             <div class="tab-content">
-                <div class="chart tab-pane active" id="resultado-aba1" style="min-height:600px;"></div>
+                <div class="chart tab-pane active" id="resultado-aba1" style="min-height:600px;">
+
+                </div>
                 <div class="chart tab-pane" id="resultado-aba2" style="min-height:600px;"></div>
             </div>
         </div>
-        <div class="card-footer" id="resultado-footer">
+        <div class="card-footer">
+
+            <div id="grafico-1" style="height:580px"></div>
+
         </div>
 
     </div>
 @stop
 
-{{-- @section('plugins.HighCharts', true) --}}
-
+@section('plugins.HighCharts', true)
 @once
     @push('css')
+        <style>
+        
+        </style>
     @endpush
     @push('js')
         <script>
-            $(document).ready(function() {
-
-                gerarSelectPicker(".multiselect-bs4");
-
-                $('#btnBuscarDados').click(function() {
-                    FormValidator.validar('form_filtros_pesquisa').then((isValid) => {
-                        if (isValid) {
-                            __buscarDados();
-                        }
-                    });
-
-                });
-
-            });
-
-            function __buscarDados() {
-                let idForm = 'form_filtros_pesquisa';
-                let div_retorno_sintetico = 'resultado-aba1';
-                let div_retorno_analitico = 'resultado-aba2';
-                addLoading("card_resultados");
-                let datas = getRangeDate('dateRangePicker');
-                const requestParams = {
-                    method: 'POST',
-                    url: '{{ route('buscar.credor_dash_carteira_pagamento_dados') }}',
-                    data: {
-                        'rangedatas': datas,
-                        'limitar_data': $('#dateRangePicker_check').is(':checked') ? 'S' : 'N'
-                    },
-                    formId: idForm
-                };
-                AjaxRequest.sendRequest(requestParams).then(response => {
-                    removeLoading("card_resultados");
-                    if (response.status) {
-                        if (response.msg != "") {
-                            //SweetAlert.info(response.msg);
-                            alertar(response.msg, '', 'info');
-                        }
-                        if (response.data.htmlDownload !== undefined && response.data.htmlDownload != '') {
-                            // Se o status for verdadeiro, então há um arquivo para download
-                            var html = response.data.htmlDownload;
-                            $('#' + div_retorno).html(response.data.htmlDownload);
-                        } else {
-                            if (response.data.tabela !== undefined && response.data.tabela != '') {
-
-                                let param = {
-                                    ordering: false
-                                };
-                                __renderDataTable(response.data.tabela, div_retorno_sintetico, param);
-
-                            }
-                        }
-
-
-
-                    } else {
-                        SweetAlert.alertAutoClose("error", "Precisamos de sua atenção", response.msg, 20000);
-                    }
-                }).catch(error => {
-                    alertar(error, "", "error");
-                });
-            }
-
-            document.addEventListener("DOMContentLoaded", function() {
-
-            });
+            window.app = {
+                routes: {
+                    buscarCredor: "{{ route('buscar.credor_dash_carteira_pagamento_dados') }}"
+                },
+            };
         </script>
+        <script src="{{ asset('js/scripts_blades/dash_carteira_pagamento.js') }}?v={{ time() }}"></script>
     @endpush
+
 @endonce

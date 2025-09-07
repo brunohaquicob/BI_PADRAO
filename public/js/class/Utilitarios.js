@@ -483,7 +483,7 @@ class Utilitarios {
             if (!orderByKey[key].includes(group)) orderByKey[key].push(group); // <- 1ª vez que vemos esse grupo
 
             for (const vc of valueCols) {
-                const spec = (vc.spec !== undefined ? vc.spec : vc.spc); 
+                const spec = (vc.spec !== undefined ? vc.spec : vc.spc);
                 if (spec === undefined) {
                     if (typeof console !== 'undefined') console.warn('[pieBreakdownByMulti] valueCol sem spec/spc:', vc);
                     continue;
@@ -773,5 +773,211 @@ class AjaxRequest {
                 }
             });
         });
+    }
+}
+
+function animarNumeroBRL(
+    elemento,
+    valorInicial,
+    valorFinal,
+    duracao = 2000,
+    decimal = 2,
+    prefix = "R$ ",
+    sufix = "",
+    returnPromise = false // <- NOVO, opcional
+) {
+    function setValor(el, valorFormatado) {
+        var tag = el.prop("tagName").toLowerCase();
+        if (tag === "input" || tag === "textarea" || tag === "select") {
+            el.val(valorFormatado);
+        } else {
+            el.html(valorFormatado);
+        }
+    }
+
+    const $els = $(elemento);
+    if (!returnPromise) {
+        // Comportamento antigo (compatível)
+        $els.each(function () { animarUm($(this)); });
+        return; // nada retornado, como antes
+    }
+
+    // Novo: resolve quando TODOS os elementos terminarem
+    const promises = [];
+    $els.each(function () {
+        promises.push(new Promise((resolve) => animarUm($(this), resolve)));
+    });
+    return Promise.all(promises);
+
+    function animarUm(el, done) {
+        var vi = valorInicial;
+        if (vi === undefined || vi === null || vi === "") vi = 0;
+        else if (typeof vi === "string") vi = moneyToDouble(vi);
+        else if (typeof vi !== "number") vi = 0;
+
+        var vf = valorFinal;
+        if (vf === undefined || vf === null || vf === "") {
+            var textoAtual = "";
+            var tag = el.prop("tagName").toLowerCase();
+            if (tag === "input" || tag === "textarea" || tag === "select") {
+                textoAtual = el.val() || "0";
+            } else {
+                textoAtual = el.text() || "0";
+            }
+            vf = moneyToDouble(textoAtual);
+        } else if (typeof vf === "string") vf = moneyToDouble(vf);
+        else if (typeof vf !== "number") vf = 0;
+
+        if (vi === vf) {
+            setValor(el, doubleToMoney(vf, decimal));
+            if (done) done();
+            return;
+        }
+
+        setValor(el, doubleToMoney(vi, decimal));
+
+        $({ contador: vi }).animate(
+            { contador: vf },
+            {
+                duration: duracao,
+                easing: 'swing',
+                step: function (now) {
+                    numberStepBRL(now, { elem: el[0] });
+                },
+                complete: function () {
+                    numberStepBRL(vf, { elem: el[0] });
+                    if (done) done();
+                }
+            }
+        );
+
+        function numberStepBRL(now, tween) {
+            var formatted = now.toFixed(decimal).replace('.', ',');
+            var parts = formatted.split(',');
+            var inteiroComPonto = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+            setValor($(tween.elem), prefix + inteiroComPonto + (decimal > 0 ? ',' + parts[1] : '') + sufix);
+        }
+    }
+}
+
+/**
+ * Renderiza uma grade de small-box (AdminLTE3) com animação de valores
+ * e % opcional no subtítulo.
+ *
+ * @param {Array} items  -> seu array de objetos
+ * @param {Object} opts  -> opções de layout/defalt
+ *   - container: seletor do container (ex: "#kpis-row")
+ *   - colClass: classes de coluna Bootstrap (default: "col-12 col-sm-6 col-md-3 col-lg-3")
+ *   - defaultColor: classe bg-* (default: "bg-success")
+ *   - defaultIcon: classe do ícone (default: "ion ion-stats-bars")
+ *   - showPercentWhenMissing: se true, reserva o espaço do (%) mesmo sem valor (default: false)
+ */
+function renderSmallBoxes(items, opts = {}) {
+    const {
+        container = "#kpis-row",
+        colClass = "col-12 col-sm-6 col-md-3 col-lg-3",
+        defaultColor = "bg-success",
+        defaultIcon = "ion ion-stats-bars",
+        showPercentWhenMissing = false
+    } = opts;
+    $(container).empty();
+    const $wrap = $(container);
+    if (!$wrap.length) {
+        console.warn("Container não encontrado:", container);
+        return;
+    }
+
+    items.forEach(it => {
+        const idVal = it.animar_id;                       // id do span do valor
+        const idPct = it.animar_id + "-pct";              // id do span do percentual
+        const color = (it.color && it.color.trim()) ? it.color.trim() : defaultColor; // ex: "bg-success", "bg-info"
+        const icon = (it.icon && it.icon.trim()) ? it.icon.trim() : defaultIcon;  // ex: "ion ion-social-usd"
+        const text = it.text || "";
+        const prefix = (typeof it.animar_prefix === "string") ? it.animar_prefix : "";
+        const sufix = (typeof it.animar_sufix === "string") ? it.animar_sufix : "";
+        const tempo = Number(it.animar_tempo) || 2000;
+        const dec = Number(it.animar_decimal) || 0;
+
+        // % opcional (passe em it.percent_value como número: 11.82 para "11,82%")
+        const hasPercent = typeof it.percent_value === "number";
+        const pctDec = Number(it.percent_decimals != null ? it.percent_decimals : 2);
+        const pctSuffix = it.percent_suffix != null ? String(it.percent_suffix) : "%";
+        const pctPrefix = it.percent_prefix != null ? String(it.percent_prefix) : "";
+
+        const pctText = hasPercent
+            ? formatPercentBR(it.percent_value, pctDec, pctPrefix, pctSuffix)
+            : (showPercentWhenMissing ? "<b id='" + idPct + "'></b>" : "");
+
+        // monta o bloco
+        const html = `
+        <div class="${colClass}">
+            <div class="small-box ${color}">
+            <div class="inner">
+                <h3><span id="${idVal}">0</span></h3>
+                <p>
+                <span class="sbx-label">${escapeHTML(text)}</span>
+                ${hasPercent || showPercentWhenMissing ? ` (<b id="${idPct}">${pctText || ""}</b>)` : ""}
+                </p>
+            </div>
+            <div class="icon">
+                <i class="${icon}"></i>
+            </div>
+            </div>
+        </div>
+        `;
+
+        const $node = $(html);
+        $wrap.append($node);
+
+        // anima o valor
+        // começa do zero por padrão; se quiser inicial diferente, passe em it.animar_valor_inicial
+        const vi = (typeof it.animar_valor_inicial === "number") ? it.animar_valor_inicial : 0;
+        animarNumeroBRL(
+            "#" + idVal,
+            vi,
+            Number(it.animar_valor) || 0,
+            tempo,
+            dec,
+            prefix,
+            sufix
+        );
+
+        // se percent_value veio depois/assíncrono, pode-se atualizar com updateSmallBoxPercent(...)
+    });
+
+    // util: atualiza valor com animação, depois de já renderizado
+    //   ex.: updateSmallBoxValue("68bb3d2ad13ab", 9999.99, {decimal:2, tempo:1500, prefix:"R$ "});
+    window.updateSmallBoxValue = function (animar_id, novoValor, cfg = {}) {
+        animarNumeroBRL(
+            "#" + animar_id,
+            cfg.valorInicial != null ? Number(cfg.valorInicial) : undefined,
+            Number(novoValor) || 0,
+            cfg.tempo != null ? Number(cfg.tempo) : 1200,
+            cfg.decimal != null ? Number(cfg.decimal) : 2,
+            cfg.prefix != null ? String(cfg.prefix) : "",
+            cfg.sufix != null ? String(cfg.sufix) : ""
+        );
+    };
+
+    // util: atualiza o % depois (caso calcule depois do render)
+    //   ex.: updateSmallBoxPercent("68bb3d2ad13ab", 11.82)
+    window.updateSmallBoxPercent = function (animar_id, percentNumber, decs = 2, prefix = "", suffix = "%") {
+        const $pct = $("#" + animar_id + "-pct");
+        if ($pct.length) {
+            $pct.html(formatPercentBR(percentNumber, decs, prefix, suffix));
+        }
+    };
+
+    // helpers
+    function formatPercentBR(num, decs, prefix, suffix) {
+        if (typeof num !== "number" || isNaN(num)) return "";
+        const f = num.toFixed(decs).replace(".", ",");
+        return `${prefix}${f}${suffix}`;
+    }
+
+    function escapeHTML(s) {
+        return String(s).replace(/[&<>"']/g, m => (
+            { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[m]
+        ));
     }
 }
