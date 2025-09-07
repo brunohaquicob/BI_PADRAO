@@ -130,6 +130,10 @@
 @once
     @push('css')
         <style>
+            #card_resultados {
+                background: #eef2f7;
+            }
+
 
             /* ==== Fix maximize AdminLTE ==== */
             .card.maximized-card {
