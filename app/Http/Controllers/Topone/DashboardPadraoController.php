@@ -23,27 +23,17 @@ class DashboardPadraoController extends Controller {
         return "WITH PrestMin AS (
             SELECT
                 tad.ID_Acordo,
-                tp.CPF_CGC,
-                tl.intCodLoja as cod_loja,
-                trim(tl.strFantasia) as loja,
-                lg.intCodGrupo as cod_loja_grupo,
-                trim(lg.strFantasia) as loja_grupo,
-                to2.intCodOperacao as cod_operacao,
-                trim(to2.strNome) as operacao,
+                tad.CONTRATO,
+                tc.CARTEIRA,
                 MIN(tp.DATA_VENCTO) AS menor_vencimento
             FROM TB_Acordos_Detalhe AS tad
             INNER JOIN TB_Acordos ta ON ta.ID_Acordo = tad.ID_Acordo
-            INNER JOIN TB_Contratos tc ON tc.CARTAO = tad.Cartao
-                AND tc.CONTRATO = tad.Contrato
-                AND tc.CPF_CGC = ta.CPF_CGC
-            INNER JOIN TB_Operacao to2 on to2.intCodOperacao = tc.OPERACAO
-            INNER JOIN TB_Prestacoes AS tp ON tp.CARTAO = tad.Cartao
-                AND tp.CONTRATO = tad.Contrato
+            INNER JOIN TB_Contratos tc ON tc.CONTRATO = tad.Contrato AND tc.CPF_CGC = ta.CPF_CGC
+            INNER JOIN TB_Prestacoes AS tp ON tp.CONTRATO = tad.Contrato
                 AND tp.CPF_CGC = ta.CPF_CGC
                 AND tp.NUM_PREST = tad.Num_Prest
-            INNER JOIN TB_Loja tl ON tl.intCodLoja = tc.LOJA
-            INNER JOIN TB_Grupo lg ON lg.intCodGrupo = tl.intCodGrupo
-            GROUP BY tad.ID_Acordo, tp.CPF_CGC, tl.intCodLoja, tl.strFantasia, lg.intCodGrupo, lg.strFantasia, to2.intCodOperacao, to2.strNome
+            WHERE 1 = 1 
+            GROUP BY tad.ID_Acordo, tad.CONTRATO, tc.CARTEIRA
             ),
             Pagamentos AS (
             SELECT
@@ -65,12 +55,12 @@ class DashboardPadraoController extends Controller {
                 ta.ID_Acordo,
                 ta.ID_Usuario_Acordo,
                 ta.CD_Situacao,
-                pm.loja_grupo as sub_grupo,
-                pm.cod_loja_grupo as cod_sub_grupo,
-                pm.loja,
-                pm.cod_loja,
-                pm.operacao as grupo,
-                pm.cod_operacao as cod_grupo,
+                to2.strNome as grupo,
+                to2.intCodOperacao as cod_grupo,
+                tc.intCodCarteira as cod_sub_grupo,
+                tc.strFantasia as sub_grupo,
+                op.strNome as operador,
+                op.strUsuario as cod_operador,
                 ta.VL_Acordo as vl_acordo,
                 ta.QT_Parcelas as qt_parcelas,
                 ta.VL_Entrada,
@@ -92,8 +82,11 @@ class DashboardPadraoController extends Controller {
                 -- Próximo vencimento em aberto como DATE
                 CONVERT(date, CONVERT(varchar(8), COALESCE(pgto.prox_venc_int_ge_hoje, pgto.prox_venc_int_any)), 112) AS prox_vencimento_aberto
             FROM TB_Acordos AS ta
-            INNER JOIN PrestMin AS pm ON pm.ID_Acordo = ta.ID_Acordo AND pm.CPF_CGC = ta.CPF_CGC
+            INNER JOIN PrestMin AS pm ON pm.ID_Acordo = ta.ID_Acordo 
             INNER JOIN Pagamentos AS pgto ON pgto.ID_Acordo = ta.ID_Acordo
+            INNER JOIN TB_Operacao to2 on to2.intCodOperacao = ta.OPERACAO
+            INNER JOIN TB_Operador op on op.strUsuario = ta.ID_Usuario_Acordo
+            INNER JOIN TB_Carteira tc on tc.intCodCarteira = pm.CARTEIRA
             WHERE 1 = 1 
             and ta.DT_Registro between ? and ? 
             -- and ta.DT_Cancel = ?
