@@ -28,19 +28,22 @@ class DashboardPadraoController extends Controller {
                 trim(tl.strFantasia) as loja,
                 lg.intCodGrupo as cod_loja_grupo,
                 trim(lg.strFantasia) as loja_grupo,
+                to2.intCodOperacao as cod_operacao,
+                trim(to2.strNome) as operacao,
                 MIN(tp.DATA_VENCTO) AS menor_vencimento
             FROM TB_Acordos_Detalhe AS tad
             INNER JOIN TB_Acordos ta ON ta.ID_Acordo = tad.ID_Acordo
             INNER JOIN TB_Contratos tc ON tc.CARTAO = tad.Cartao
                 AND tc.CONTRATO = tad.Contrato
                 AND tc.CPF_CGC = ta.CPF_CGC
+            INNER JOIN TB_Operacao to2 on to2.intCodOperacao = tc.OPERACAO
             INNER JOIN TB_Prestacoes AS tp ON tp.CARTAO = tad.Cartao
                 AND tp.CONTRATO = tad.Contrato
                 AND tp.CPF_CGC = ta.CPF_CGC
                 AND tp.NUM_PREST = tad.Num_Prest
             INNER JOIN TB_Loja tl ON tl.intCodLoja = tc.LOJA
             INNER JOIN TB_Grupo lg ON lg.intCodGrupo = tl.intCodGrupo
-            GROUP BY tad.ID_Acordo, tp.CPF_CGC, tl.intCodLoja, tl.strFantasia, lg.intCodGrupo, lg.strFantasia
+            GROUP BY tad.ID_Acordo, tp.CPF_CGC, tl.intCodLoja, tl.strFantasia, lg.intCodGrupo, lg.strFantasia, to2.intCodOperacao, to2.strNome
             ),
             Pagamentos AS (
             SELECT
@@ -62,10 +65,12 @@ class DashboardPadraoController extends Controller {
                 ta.ID_Acordo,
                 ta.ID_Usuario_Acordo,
                 ta.CD_Situacao,
-                pm.loja_grupo as grupo,
-                pm.cod_loja_grupo as cod_grupo,
-                pm.loja as sub_grupo,
-                pm.cod_loja as cod_sub_grupo,
+                pm.loja_grupo as sub_grupo,
+                pm.cod_loja_grupo as cod_sub_grupo,
+                pm.loja,
+                pm.cod_loja,
+                pm.operacao as grupo,
+                pm.cod_operacao as cod_grupo,
                 ta.VL_Acordo as vl_acordo,
                 ta.QT_Parcelas as qt_parcelas,
                 ta.VL_Entrada,
