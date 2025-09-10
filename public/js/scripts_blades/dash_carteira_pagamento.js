@@ -82,11 +82,11 @@ async function lerRowEMontarGraficos(rows, v2 = true) {
         return true;
     }
     const cols = v2 === true
-        ? { V1: 7, V2: 10 }
-        : { V1: 7 };
+        ? { V1: '7+9', V2: 10 }
+        : { V1: '7+9' };
 
-    const ar_data_valor = Utilitarios.sumColumns(rows, cols, 5);
-
+    const ar_data_valor = Utilitarios.sumColumnsFormula(rows, cols, 5);
+    console.log(ar_data_valor)
     // const chartPro = new TimeSeriesChartPro({
     //     container: "grafico-1",
     //     title: "Pagamentos",

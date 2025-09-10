@@ -3153,7 +3153,7 @@ class TimeSeriesChartPro {
                 decimalPoint: ',', thousandsSep: '.',
                 rangeSelectorZoom: "", rangeSelectorFrom: "De", rangeSelectorTo: "Até"
             },
-            time: { useUTC: false }
+            time: { useUTC: true }
         });
         TimeSeriesChartPro._langSet = true;
     }
@@ -3173,15 +3173,15 @@ class TimeSeriesChartPro {
 
             // RangeSelector compacto (pode customizar/estender)
             rangeSelector: {
-                selected: 1, dropdown: 'responsive', inputEnabled: false, buttonSpacing: 10,
+                selected: 0, dropdown: 'responsive', inputEnabled: false, buttonSpacing: 10,
                 buttons: [
+                    { type: "all", text: "Tudo" },
                     { type: "day", count: 7, text: "7D" },
                     { type: "day", count: 15, text: "15D" },
                     { type: "month", count: 1, text: "1M" },
                     { type: "month", count: 3, text: "3M" },
                     { type: "month", count: 6, text: "6M" },
                     { type: "ytd", text: "YTD" },
-                    { type: "all", text: "Tudo" }
                 ],
                 buttonTheme: { r: 8, padding: 3, style: { fontSize: "11px", fontWeight: 600, whiteSpace: "nowrap" } }
             },
