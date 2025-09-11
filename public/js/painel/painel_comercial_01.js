@@ -70,20 +70,20 @@ async function tratarRetorno2(dados) {
 
     const header_acionamento = [
         { key: "name", label: "Colaborador", type: "name", compact: true, compactLen: 15 },
-        { key: "qtd_hoje", label: "Hoje", showMode: "value", decimals: 0, variant: "bar", colorMode: 'percent', progreeBase: "total", aggregate: "sum", align: "center", invertColor: false, thresholds: { low: 40, mid: 60 } },
-        { key: "qtd_mes", label: "Mês", showMode: "value", decimals: 0, variant: "bar", colorMode: 'percent', progreeBase: "total", aggregate: "sum", align: "center", invertColor: false, thresholds: { low: 30, mid: 50 } },
+        { key: "qtd_hoje", label: "Hoje", showMode: "value", decimals: 0, variant: "bar", colorMode: 'percent', progressBase: "total", aggregate: "sum", align: "center", invertColor: false, thresholds: { low: 40, mid: 60 } },
+        { key: "qtd_mes", label: "Mês", showMode: "value", decimals: 0, variant: "bar", colorMode: 'percent', progressBase: "total", aggregate: "sum", align: "center", invertColor: false, thresholds: { low: 30, mid: 50 } },
 
     ];
     const header_acordo = [
         { key: "name", label: "Colaborador", type: "name", compact: true, compactLen: 15 },
-        { key: "qtd_hoje", label: "Hoje", showMode: "value", decimals: 0, variant: "bar", colorMode: 'percent', progreeBase: "total", aggregate: "sum", align: "center", invertColor: false, thresholds: { low: 40, mid: 60 } },
-        { key: "qtd_mes", label: "Mês", showMode: "value", decimals: 0, variant: "bar", colorMode: 'percent', progreeBase: "total", aggregate: "sum", align: "center", invertColor: false, thresholds: { low: 30, mid: 50 } },
+        { key: "qtd_hoje", label: "Hoje", showMode: "value", decimals: 0, variant: "bar", colorMode: 'percent', progressBase: "total", aggregate: "sum", align: "center", invertColor: false, thresholds: { low: 40, mid: 60 } },
+        { key: "qtd_mes", label: "Mês", showMode: "value", decimals: 0, variant: "bar", colorMode: 'percent', progressBase: "total", aggregate: "sum", align: "center", invertColor: false, thresholds: { low: 30, mid: 50 } },
 
     ];
     const header_pagamento = [
         { key: "name", label: "Colaborador", type: "name", compact: true, compactLen: 15 },
-        { key: "qtd_hoje", label: "Hoje", showMode: "value", decimals: 2, variant: "bar",  colorMode: 'percent', progreeBase: "total", aggregate: "sum", align: "center", invertColor: false, thresholds: { low: 40, mid: 60 } },
-        { key: "qtd_mes", label: "Mês", showMode: "value", decimals: 2, variant: "bar",  colorMode: 'percent', progreeBase: "total", aggregate: "sum", align: "center", invertColor: false, thresholds: { low: 30, mid: 50 } },
+        { key: "qtd_hoje", label: "Hoje", showMode: "value", decimals: 2, variant: "bar", colorMode: 'percent', progressBase: "total", aggregate: "sum", align: "center", invertColor: false, thresholds: { low: 40, mid: 60 } },
+        { key: "qtd_mes", label: "Mês", showMode: "value", decimals: 2, variant: "bar", colorMode: 'percent', progressBase: "total", aggregate: "sum", align: "center", invertColor: false, thresholds: { low: 30, mid: 50 } },
 
     ];
 
@@ -228,8 +228,14 @@ function renderRankingPanelFlex(data, opts = {}) {
         }
     };
 
-    const fmtText = (num, dec = 0, pre = "", suf = "") =>
-        (pre || "") + Number(num || 0).toFixed(dec).replace('.', ',') + (suf || "");
+    const fmtText = (num, dec = 0, pre = "", suf = "") => {
+        const n = Number(num || 0);
+        const body = n.toLocaleString('pt-BR', {
+            minimumFractionDigits: dec,
+            maximumFractionDigits: dec
+        });
+        return (pre || "") + body + (suf || "");
+    };
 
     const computeAggregate = (rows, key, agg, fnFmtDec = 0) => {
         const arr = rows.map(r => Number(r[key]) || 0);
