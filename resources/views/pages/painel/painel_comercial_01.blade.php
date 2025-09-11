@@ -135,13 +135,15 @@
             }
 
 
-            /* ==== Fix maximize AdminLTE ==== */
+            /* AdminLTE - maximize em tela cheia */
             .card.maximized-card {
-                /* deixa o card ocupar a tela, mas sem travar a altura */
-                height: auto !important;
-                max-height: none !important;
-
-                /* e usa flex para o body ocupar e rolar */
+                position: fixed;
+                inset: 0;
+                /* top/right/bottom/left = 0 */
+                z-index: 1080;
+                width: 100vw;
+                height: 100vh;
+                margin: 0 !important;
                 display: flex;
                 flex-direction: column;
             }
@@ -153,12 +155,12 @@
 
             .card.maximized-card .card-body {
                 flex: 1 1 auto;
-                /* ocupa o restante */
-                overflow: auto !important;
-                height: auto !important;
+                overflow: auto;
+                /* rola só o body */
                 min-height: 0;
-                /* evita overflow por cálculo de min-height */
+                /* evita forçar altura extra */
             }
+
 
 
             .rk-card {
@@ -167,9 +169,9 @@
                 border: 1px solid #e9ecef;
                 border-radius: 16px;
                 box-shadow: 0 4px 14px rgba(0, 0, 0, .06);
-                --rk-row-gap: 6px;
+                --rk-row-gap: 4px;
                 /* espaçamento vertical entre linhas (antes 8px) */
-                --rk-progress-h: 24px;
+                --rk-progress-h: 16px;
                 /* altura das barras (antes 20px) */
             }
 
@@ -223,8 +225,6 @@
                 /* ↓ menos padding vertical */
             }
 
-
-
             .rk-name {
                 max-width: 180px;
                 white-space: nowrap;
@@ -234,7 +234,7 @@
 
             /* célula do progresso */
             .rk-cell {
-                min-width: 180px;
+                min-width: 50px;
             }
 
             .rk-progress-wrap {
@@ -316,6 +316,120 @@
 
             .rk-card.compacto .rk-progress-label {
                 font-size: 0.72rem;
+            }
+
+            /* mini por coluna */
+            .rk-cell.rk-mini .rk-progress {
+                height: 12px;
+            }
+
+            /* sem barra: só número */
+            .rk-cell-plain {
+                text-align: right;
+            }
+
+            .rk-cell-plain.center {
+                text-align: center;
+            }
+
+            .rk-cell-plain.left {
+                text-align: left;
+            }
+
+            .rk-plain-val {
+                font-weight: 700;
+            }
+
+            /* badge (pílula sem barra) */
+            .rk-cell-badge {
+                text-align: center;
+            }
+
+            .rk-badge {
+                display: inline-block;
+                padding: .15rem .55rem;
+                border-radius: 9999px;
+                background: #f1f3f5;
+                font-weight: 700;
+            }
+
+            .rk-badge.rk-green {
+                background: #d3f9d8;
+                color: #0f5132;
+            }
+
+            .rk-badge.rk-yellow {
+                background: #fff3bf;
+                color: #664d03;
+            }
+
+            .rk-badge.rk-red {
+                background: #ffe3e3;
+                color: #842029;
+            }
+
+            /* permite scroll horizontal quando necessário */
+            .rk-card {
+                overflow-x: auto;
+            }
+
+            /* evita tabelão gigante e melhora shrink */
+            .rk-table {
+                width: 100%;
+                table-layout: fixed;
+            }
+
+            /* o nome ocupa menos quando compacto */
+            .rk-card.compacto .rk-name {
+                max-width: 140px;
+            }
+
+            /* min-width por variante (pode customizar via options) */
+            .rk-cell {
+                min-width: 0;
+            }
+
+            /* default solto, controlado inline pela função */
+            .rk-cell.rk-mini .rk-progress {
+                height: 12px;
+            }
+
+            .rk-cell-badge {
+                text-align: center;
+            }
+
+            .rk-badge {
+                display: inline-block;
+                padding: .15rem .55rem;
+                border-radius: 9999px;
+                font-weight: 700;
+            }
+
+            .rk-badge.rk-green {
+                background: #d3f9d8;
+                color: #0f5132;
+            }
+
+            .rk-badge.rk-yellow {
+                background: #fff3bf;
+                color: #664d03;
+            }
+
+            .rk-badge.rk-red {
+                background: #ffe3e3;
+                color: #842029;
+            }
+
+            /* agregados no cabeçalho/rodapé */
+            .rk-agg {
+                font-weight: 600;
+                opacity: .85;
+                margin-left: .35rem;
+                font-size: .82em;
+            }
+
+            .rk-agg-row td {
+                font-weight: 700;
             }
         </style>
     @endpush
