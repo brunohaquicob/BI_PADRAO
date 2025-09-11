@@ -107,9 +107,7 @@ async function tratarRetorno2(dados) {
         containerId: "card02",
         title: "Acordos",
         titleIcon: "📈",
-        // mapeia suas colunas e configura cada uma
         header: header_acordo,
-        // ordenar pela coluna 'val2'
         sortBy: "qtd_mes",
         limit: 15,
         animDuration: 900,
@@ -122,9 +120,7 @@ async function tratarRetorno2(dados) {
         containerId: "card03",
         title: "Pagamentos",
         titleIcon: "📈",
-        // mapeia suas colunas e configura cada uma
         header: header_pagamento,
-        // ordenar pela coluna 'val2'
         sortBy: "qtd_mes",
         limit: 15,
         animDuration: 900,
