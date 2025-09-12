@@ -20,6 +20,70 @@
         </div>
         <div class="card-body">
             <form id="form_filtros_pesquisa">
+                <div class="row">
+                    <!-- Metas: Acionamentos -->
+                    <div class="col-md-4">
+                        <div class="form-group mb-2">
+                            <label class="mb-1">Metas – Acionamentos</label>
+                            <div class="form-row">
+                                <div class="col">
+                                    <div class="input-group input-group-sm">
+                                        <div class="input-group-prepend"><span class="input-group-text">Hoje</span></div>
+                                        <input type="number" min="0" step="1" class="form-control js-meta" id="meta_acao_hoje" name="meta_acao_hoje" value="40">
+                                    </div>
+                                </div>
+                                <div class="col">
+                                    <div class="input-group input-group-sm">
+                                        <div class="input-group-prepend"><span class="input-group-text">Mês</span></div>
+                                        <input type="number" min="0" step="1" class="form-control js-meta" id="meta_acao_mes" name="meta_acao_mes" value="700">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Metas: Acordos -->
+                    <div class="col-md-4">
+                        <div class="form-group mb-2">
+                            <label class="mb-1">Metas – Acordos</label>
+                            <div class="form-row">
+                                <div class="col">
+                                    <div class="input-group input-group-sm">
+                                        <div class="input-group-prepend"><span class="input-group-text">Hoje</span></div>
+                                        <input type="number" min="0" step="1" class="form-control js-meta" id="meta_acordo_hoje" name="meta_acordo_hoje" value="5">
+                                    </div>
+                                </div>
+                                <div class="col">
+                                    <div class="input-group input-group-sm">
+                                        <div class="input-group-prepend"><span class="input-group-text">Mês</span></div>
+                                        <input type="number" min="0" step="1" class="form-control js-meta" id="meta_acordo_mes" name="meta_acordo_mes" value="100">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Metas: Pagamentos -->
+                    <div class="col-md-4">
+                        <div class="form-group mb-2">
+                            <label class="mb-1">Metas – Pagamentos</label>
+                            <div class="form-row">
+                                <div class="col">
+                                    <div class="input-group input-group-sm">
+                                        <div class="input-group-prepend"><span class="input-group-text">Hoje</span></div>
+                                        <input type="number" min="0" step="0.01" class="form-control js-meta" id="meta_pag_hoje" name="meta_pag_hoje" value="10000">
+                                    </div>
+                                </div>
+                                <div class="col">
+                                    <div class="input-group input-group-sm">
+                                        <div class="input-group-prepend"><span class="input-group-text">Mês</span></div>
+                                        <input type="number" min="0" step="0.01" class="form-control js-meta" id="meta_pag_mes" name="meta_pag_mes" value="100000">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
 
                 <div class="row">
                     <div class="col-md-3">
@@ -586,7 +650,9 @@
                 }
             }
 
-            .rk-row-hide { display: none !important; }
+            .rk-row-hide {
+                display: none !important;
+            }
 
 
             /* esconde a linha de participação em telas baixas */

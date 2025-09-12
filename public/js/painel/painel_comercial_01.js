@@ -107,25 +107,33 @@ async function tratarRetorno2(dados) {
         fields: [{ key: 'qtd_hoje', label: 'Hoje', decimals: 2, prefix: 'R$ ' },
         { key: 'qtd_mes', label: 'Mês', decimals: 2, prefix: 'R$ ' }]
     });
-    
-    const header_acionamento = [
-        { key: "name", label: "Colaborador", type: "name", compact: true, compactLen: 15 },
-        { key: "qtd_hoje", label: "Hoje", showMode: "value", decimals: 0, variant: "bar", colorMode: 'value', progressBase: "total", aggregate: "sum", align: "center", invertColor: false, thresholds: { low: 20, mid: 30 } },
-        { key: "qtd_mes", label: "Mês", showMode: "value", decimals: 0, variant: "bar", colorMode: 'value', progressBase: "total", aggregate: "sum", align: "center", invertColor: false, thresholds: { low: 300, mid: 500 } },
 
-    ];
-    const header_acordo = [
-        { key: "name", label: "Colaborador", type: "name", compact: true, compactLen: 15 },
-        { key: "qtd_hoje", label: "Hoje", showMode: "value", decimals: 0, variant: "bar", colorMode: 'value', progressBase: "total", aggregate: "sum", align: "center", invertColor: false, thresholds: { low: 3, mid: 5 } },
-        { key: "qtd_mes", label: "Mês", showMode: "value", decimals: 0, variant: "bar", colorMode: 'value', progressBase: "total", aggregate: "sum", align: "center", invertColor: false, thresholds: { low: 40, mid: 70 } },
 
-    ];
-    const header_pagamento = [
-        { key: "name", label: "Colaborador", type: "name", compact: true, compactLen: 15 },
-        { key: "qtd_hoje", label: "Hoje", showMode: "value", decimals: 2, variant: "bar", colorMode: 'value', progressBase: "total", aggregate: "sum", align: "center", invertColor: false, thresholds: { low: 5000, mid: 10000 } },
-        { key: "qtd_mes", label: "Mês", showMode: "value", decimals: 2, variant: "bar", colorMode: 'value', progressBase: "total", aggregate: "sum", align: "center", invertColor: false, thresholds: { low: 100000, mid: 200000 } },
 
-    ];
+    // const header_acionamento = [
+    //     { key: "name", label: "Colaborador", type: "name", compact: true, compactLen: 15 },
+    //     { key: "qtd_hoje", label: "Hoje", showMode: "value", decimals: 0, variant: "bar", colorMode: 'percent', progressBase: "meta", meta: { value: 40 }, aggregate: "sum", align: "center", invertColor: false, thresholds: { low: 40, mid: 60 } },
+    //     { key: "qtd_mes", label: "Mês", showMode: "value", decimals: 0, variant: "bar", colorMode: 'percent', progressBase: "meta", meta: { value: 700 }, aggregate: "sum", align: "center", invertColor: false, thresholds: { low: 30, mid: 50 } },
+
+    // ];
+    // const header_acordo = [
+    //     { key: "name", label: "Colaborador", type: "name", compact: true, compactLen: 15 },
+    //     { key: "qtd_hoje", label: "Hoje", showMode: "value", decimals: 0, variant: "bar", colorMode: 'percent', progressBase: "meta", meta: { value: 5 }, aggregate: "sum", align: "center", invertColor: false, thresholds: { low: 40, mid: 60 } },
+    //     { key: "qtd_mes", label: "Mês", showMode: "value", decimals: 0, variant: "bar", colorMode: 'percent', progressBase: "meta", meta: { value: 100 }, aggregate: "sum", align: "center", invertColor: false, thresholds: { low: 30, mid: 50 } },
+
+    // ];
+    // const header_pagamento = [
+    //     { key: "name", label: "Colaborador", type: "name", compact: true, compactLen: 15 },
+    //     { key: "qtd_hoje", label: "Hoje", showMode: "value", decimals: 2, variant: "bar", colorMode: 'percent', progressBase: "meta", meta: { value: 10000 }, aggregate: "sum", align: "center", invertColor: false, thresholds: { low: 40, mid: 60 } },
+    //     { key: "qtd_mes", label: "Mês", showMode: "value", decimals: 2, variant: "bar", colorMode: 'percent', progressBase: "meta", meta: { value: 100000 }, aggregate: "sum", align: "center", invertColor: false, thresholds: { low: 30, mid: 50 } },
+
+    // ];
+
+    window.__dadosPainel = dados; // deixa disponível para re-render ao mudar metas
+    const metas = getMetas();
+    const { header_acionamento, header_acordo, header_pagamento } = buildHeaders(metas);
+
+
 
     renderRankingPanelFlex(dados.rank.acionamento, {
         containerId: "card01",
@@ -169,6 +177,77 @@ async function tratarRetorno2(dados) {
         aggregatePlacement: "header",
     });
 }
+
+function numBR(v) {
+    // aceita "12.345,67" ou "12345.67" ou número puro
+    if (typeof v === 'number') return v;
+    if (!v) return 0;
+    v = String(v).trim().replace(/\./g, '').replace(',', '.');
+    const n = Number(v);
+    return isNaN(n) ? 0 : n;
+}
+
+function getMetas() {
+    return {
+        ac: { hoje: numBR($('#meta_acao_hoje').val()), mes: numBR($('#meta_acao_mes').val()) },
+        acor: { hoje: numBR($('#meta_acordo_hoje').val()), mes: numBR($('#meta_acordo_mes').val()) },
+        pag: { hoje: numBR($('#meta_pag_hoje').val()), mes: numBR($('#meta_pag_mes').val()) }
+    };
+}
+
+function buildHeaders(m) {
+    const header_acionamento = [
+        { key: "name", label: "Colaborador", type: "name", compact: true, compactLen: 15 },
+        {
+            key: "qtd_hoje", label: "Hoje", showMode: "value", decimals: 0, variant: "bar",
+            colorMode: "percent", progressBase: "meta", meta: { value: m.ac.hoje },
+            aggregate: "sum", align: "center", invertColor: false, thresholds: { low: 50, mid: 80 }
+        },
+        {
+            key: "qtd_mes", label: "Mês", showMode: "value", decimals: 0, variant: "bar",
+            colorMode: "percent", progressBase: "meta", meta: { value: m.ac.mes },
+            aggregate: "sum", align: "center", invertColor: false, thresholds: { low: 50, mid: 80 }
+        },
+    ];
+
+    const header_acordo = [
+        { key: "name", label: "Colaborador", type: "name", compact: true, compactLen: 15 },
+        {
+            key: "qtd_hoje", label: "Hoje", showMode: "value", decimals: 0, variant: "bar",
+            colorMode: "percent", progressBase: "meta", meta: { value: m.acor.hoje },
+            aggregate: "sum", align: "center", invertColor: false, thresholds: { low: 50, mid: 80 }
+        },
+        {
+            key: "qtd_mes", label: "Mês", showMode: "value", decimals: 0, variant: "bar",
+            colorMode: "percent", progressBase: "meta", meta: { value: m.acor.mes },
+            aggregate: "sum", align: "center", invertColor: false, thresholds: { low: 50, mid: 80 }
+        },
+    ];
+
+    const header_pagamento = [
+        { key: "name", label: "Colaborador", type: "name", compact: true, compactLen: 15 },
+        {
+            key: "qtd_hoje", label: "Hoje", showMode: "value", decimals: 2, variant: "bar",
+            colorMode: "percent", progressBase: "meta", meta: { value: m.pag.hoje },
+            aggregate: "sum", align: "center", invertColor: false, thresholds: { low: 50, mid: 80 }
+        },
+        {
+            key: "qtd_mes", label: "Mês", showMode: "value", decimals: 2, variant: "bar",
+            colorMode: "percent", progressBase: "meta", meta: { value: m.pag.mes },
+            aggregate: "sum", align: "center", invertColor: false, thresholds: { low: 50, mid: 80 }
+        },
+    ];
+
+    return { header_acionamento, header_acordo, header_pagamento };
+}
+$('.js-meta').on('change input', function () {
+    if (window.__dadosPainel) {
+        // re-render com novas metas
+        tratarRetorno2(window.__dadosPainel);
+    }
+});
+
+
 
 function renderRankingPanelFlex(data, opts = {}) {
     const {
@@ -450,11 +529,11 @@ function renderRankingPanelFlex(data, opts = {}) {
                 </div>
             </td>`;
 
-                    const mM = getMetaLegacyMes(r);
-                    const pMesBar = (progressBase.mes === "meta") ? pctMeta(r.qtd_mes, mM) : pctShare(r.qtd_mes, totals.mes);
-                    const labelMesFinal = (showMode === 'value') ? r.qtd_mes : pctShare(r.qtd_mes, totals.mes);
+            const mM = getMetaLegacyMes(r);
+            const pMesBar = (progressBase.mes === "meta") ? pctMeta(r.qtd_mes, mM) : pctShare(r.qtd_mes, totals.mes);
+            const labelMesFinal = (showMode === 'value') ? r.qtd_mes : pctShare(r.qtd_mes, totals.mes);
 
-                    html += `<td class="rk-cell" style="min-width:${minWidthBar}px">
+            html += `<td class="rk-cell" style="min-width:${minWidthBar}px">
                 <div class="rk-progress-wrap">
                 <div class="rk-progress"><div class="rk-bar ${colorByThreshold(pMesBar, thresholds)}" id="${cid}-bar-m-${i}" style="width:0%"></div></div>
                 <div class="rk-progress-label"><span class="rk-val" id="${cid}-val-m-${i}" data-final="${labelMesFinal}">0</span></div>
