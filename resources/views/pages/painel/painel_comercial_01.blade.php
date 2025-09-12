@@ -134,35 +134,6 @@
                 background: #eef2f7;
             }
 
-
-            /* AdminLTE - maximize em tela cheia */
-            .card.maximized-card {
-                position: fixed;
-                inset: 0;
-                /* top/right/bottom/left = 0 */
-                z-index: 1080;
-                width: 100vw;
-                height: 100vh;
-                margin: 0 !important;
-                display: flex;
-                flex-direction: column;
-            }
-
-            .card.maximized-card .card-header,
-            .card.maximized-card .card-footer {
-                flex: 0 0 auto;
-            }
-
-            .card.maximized-card .card-body {
-                flex: 1 1 auto;
-                overflow: auto;
-                /* rola só o body */
-                min-height: 0;
-                /* evita forçar altura extra */
-            }
-
-
-
             .rk-card {
                 font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", "Liberation Sans", sans-serif;
                 background: #fff;
@@ -430,6 +401,29 @@
 
             .rk-agg-row td {
                 font-weight: 700;
+            }
+
+            /* Card maximizado ocupa a tela */
+            .card.maximized-card {
+                position: fixed;
+                inset: 0;
+                z-index: 1080;
+                display: grid;
+                grid-template-rows: auto 1fr auto;
+            }
+
+            /* Body deve crescer – sem overflow aqui */
+            .card.maximized-card>.card-body {
+                overflow: initial !important;
+                /* ou: visible */
+                min-height: 0;
+            }
+
+            /* Se quiser rolagem, use um wrapper dentro do body */
+            .card.maximized-card>.card-body>.rk-scroll {
+                height: 100%;
+                min-height: 0;
+                overflow: auto;
             }
         </style>
     @endpush

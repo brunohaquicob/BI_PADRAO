@@ -139,7 +139,7 @@ async function lerRowEMontarGraficos(rows) {
 
     //const ar_total          = Utilitarios.sumColumnsFormula(rows, ar_valores);
     const ar_total = Utilitarios.sumColumns(rows, ar_valores);
-    console.log(ar_total)
+    // console.log(ar_total)
     const ar_implantacao = Utilitarios.sumColumns(rows, ar_valores, 0);
     const ar_cancelado = Utilitarios.sumColumns(rows, ar_valores, 1);
     const ar_frente = Utilitarios.sumColumns(rows, ar_valores, 2);
@@ -150,12 +150,16 @@ async function lerRowEMontarGraficos(rows) {
     //ATUALIZAR CARDS
     const time_animacao = 1500;
     //await animarNumeroBRL('#smallbox1-1', 0, ar_total.IMP, time_animacao, 2, '', '', true);
+    const vl_devolvido = ar_total.IMP - ar_total.IMPR - ar_total.IMPA;
+    // console.log(vl_devolvido)
     await Promise.all([
         animarNumeroBRL('#smallbox1_1-1', 0, ar_total.IMP, time_animacao, 2, '', '', true),
         animarNumeroBRL('#smallbox1_2-1', 0, ar_total.IMPA, time_animacao, 2, '', '', true),
         animarNumeroBRL('#smallbox1_2-2', 0, (ar_total.IMP > 0 ? (ar_total.IMPA / ar_total.IMP * 100) : 0), time_animacao, 2, 'Valor Aberto (<b>', '%</b>)', true),
         animarNumeroBRL('#smallbox1_3-1', 0, ar_total.IMPR, time_animacao, 2, '', '', true),
         animarNumeroBRL('#smallbox1_3-2', 0, (ar_total.IMP > 0 ? (ar_total.IMPR / ar_total.IMP * 100) : 0), time_animacao, 2, 'Valor Recuperado (<b>', '%</b>)', true),
+        animarNumeroBRL('#smallbox1_4-1', 0, vl_devolvido, time_animacao, 2, '', '', true),
+        animarNumeroBRL('#smallbox1_4-2', 0, (ar_total.IMP > 0 ? (vl_devolvido / ar_total.IMP * 100) : 0), time_animacao, 2, 'Valor Devolvido (<b>', '%</b>)', true),
 
         animarNumeroBRL('#smallbox2_1-1', 0, ar_total.VIDA, time_animacao, 0, '', '', true),
         animarNumeroBRL('#smallbox2_2-1', 0, ar_total.VIDARP, time_animacao, 0, '', '', true),
@@ -324,7 +328,7 @@ function graficoNovo(ar_dados, id, title, subtitle = 'Aberto/Recebidos', decimal
         '731 a 1095', '1096 a 1460', '1461 a 1825', 'ACIMA DE 1825'
     ];
     const tooltipExtraKeyTable = calculaArrayTable(rows, keyCol, 6, ordemFaixas);
-    console.log(tooltipExtraKeyTable)
+    // console.log(tooltipExtraKeyTable)
 
     let keys = Object.keys(ar_dados).sort();
     let key_ajust = keys.map(s => s.includes('->') ? s.split('->')[1].trim() : s);

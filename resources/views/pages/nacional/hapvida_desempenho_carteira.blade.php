@@ -88,14 +88,17 @@
                             <div class="row g-2" id="filtrosGraficos">
                             </div>
                             <div class="row">
-                                <div class="col-4">
+                                <div class="col-3">
                                     <x-boxdynamic-component component-name="smallbox" identificador="1_1" color="lightblue" icon="ion ion-social-usd" text1="0" text2="Valor Implantado." />
                                 </div>
-                                <div class="col-4">
+                                <div class="col-3">
                                     <x-boxdynamic-component component-name="smallbox" identificador="1_2" color="lightblue" icon="ion ion-social-usd" text1="0" text2="Valor Aberto." />
                                 </div>
-                                <div class="col-4">
+                                <div class="col-3">
                                     <x-boxdynamic-component component-name="smallbox" identificador="1_3" color="lightblue" icon="ion ion-social-usd" text1="0" text2="Valor Recuperado." />
+                                </div>
+                                <div class="col-3">
+                                    <x-boxdynamic-component component-name="smallbox" identificador="1_4" color="danger" icon="ion ion-social-usd" text1="0" text2="Valor Devolvido." />
                                 </div>
                             </div>
                             <div class="row">
