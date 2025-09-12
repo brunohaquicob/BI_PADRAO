@@ -586,6 +586,9 @@
                 }
             }
 
+            .rk-row-hide { display: none !important; }
+
+
             /* esconde a linha de participação em telas baixas */
         </style>
     @endpush

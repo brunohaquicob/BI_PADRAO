@@ -107,28 +107,25 @@ async function tratarRetorno2(dados) {
         fields: [{ key: 'qtd_hoje', label: 'Hoje', decimals: 2, prefix: 'R$ ' },
         { key: 'qtd_mes', label: 'Mês', decimals: 2, prefix: 'R$ ' }]
     });
-
-
-
+    
     const header_acionamento = [
         { key: "name", label: "Colaborador", type: "name", compact: true, compactLen: 15 },
-        { key: "qtd_hoje", label: "Hoje", showMode: "value", decimals: 0, variant: "bar", colorMode: 'percent', progressBase: "total", aggregate: "sum", align: "center", invertColor: false, thresholds: { low: 40, mid: 60 } },
-        { key: "qtd_mes", label: "Mês", showMode: "value", decimals: 0, variant: "bar", colorMode: 'percent', progressBase: "total", aggregate: "sum", align: "center", invertColor: false, thresholds: { low: 30, mid: 50 } },
+        { key: "qtd_hoje", label: "Hoje", showMode: "value", decimals: 0, variant: "bar", colorMode: 'value', progressBase: "total", aggregate: "sum", align: "center", invertColor: false, thresholds: { low: 20, mid: 30 } },
+        { key: "qtd_mes", label: "Mês", showMode: "value", decimals: 0, variant: "bar", colorMode: 'value', progressBase: "total", aggregate: "sum", align: "center", invertColor: false, thresholds: { low: 300, mid: 500 } },
 
     ];
     const header_acordo = [
         { key: "name", label: "Colaborador", type: "name", compact: true, compactLen: 15 },
-        { key: "qtd_hoje", label: "Hoje", showMode: "value", decimals: 0, variant: "bar", colorMode: 'percent', progressBase: "total", aggregate: "sum", align: "center", invertColor: false, thresholds: { low: 40, mid: 60 } },
-        { key: "qtd_mes", label: "Mês", showMode: "value", decimals: 0, variant: "bar", colorMode: 'percent', progressBase: "total", aggregate: "sum", align: "center", invertColor: false, thresholds: { low: 30, mid: 50 } },
+        { key: "qtd_hoje", label: "Hoje", showMode: "value", decimals: 0, variant: "bar", colorMode: 'value', progressBase: "total", aggregate: "sum", align: "center", invertColor: false, thresholds: { low: 3, mid: 5 } },
+        { key: "qtd_mes", label: "Mês", showMode: "value", decimals: 0, variant: "bar", colorMode: 'value', progressBase: "total", aggregate: "sum", align: "center", invertColor: false, thresholds: { low: 40, mid: 70 } },
 
     ];
     const header_pagamento = [
         { key: "name", label: "Colaborador", type: "name", compact: true, compactLen: 15 },
-        { key: "qtd_hoje", label: "Hoje", showMode: "value", decimals: 2, variant: "bar", colorMode: 'percent', progressBase: "total", aggregate: "sum", align: "center", invertColor: false, thresholds: { low: 40, mid: 60 } },
-        { key: "qtd_mes", label: "Mês", showMode: "value", decimals: 2, variant: "bar", colorMode: 'percent', progressBase: "total", aggregate: "sum", align: "center", invertColor: false, thresholds: { low: 30, mid: 50 } },
+        { key: "qtd_hoje", label: "Hoje", showMode: "value", decimals: 2, variant: "bar", colorMode: 'value', progressBase: "total", aggregate: "sum", align: "center", invertColor: false, thresholds: { low: 5000, mid: 10000 } },
+        { key: "qtd_mes", label: "Mês", showMode: "value", decimals: 2, variant: "bar", colorMode: 'value', progressBase: "total", aggregate: "sum", align: "center", invertColor: false, thresholds: { low: 100000, mid: 200000 } },
 
     ];
-
 
     renderRankingPanelFlex(dados.rank.acionamento, {
         containerId: "card01",
@@ -447,22 +444,22 @@ function renderRankingPanelFlex(data, opts = {}) {
             const labelHojeFinal = (showMode === 'value') ? r.qtd_hoje : pctShare(r.qtd_hoje, totals.hoje);
 
             html += `<td class="rk-cell" style="min-width:${minWidthBar}px">
-        <div class="rk-progress-wrap">
-          <div class="rk-progress"><div class="rk-bar ${colorByThreshold(pHojeBar, thresholds)}" id="${cid}-bar-h-${i}" style="width:0%"></div></div>
-          <div class="rk-progress-label"><span class="rk-val" id="${cid}-val-h-${i}" data-final="${labelHojeFinal}">0</span></div>
-        </div>
-      </td>`;
+                <div class="rk-progress-wrap">
+                <div class="rk-progress"><div class="rk-bar ${colorByThreshold(pHojeBar, thresholds)}" id="${cid}-bar-h-${i}" style="width:0%"></div></div>
+                <div class="rk-progress-label"><span class="rk-val" id="${cid}-val-h-${i}" data-final="${labelHojeFinal}">0</span></div>
+                </div>
+            </td>`;
 
-            const mM = getMetaLegacyMes(r);
-            const pMesBar = (progressBase.mes === "meta") ? pctMeta(r.qtd_mes, mM) : pctShare(r.qtd_mes, totals.mes);
-            const labelMesFinal = (showMode === 'value') ? r.qtd_mes : pctShare(r.qtd_mes, totals.mes);
+                    const mM = getMetaLegacyMes(r);
+                    const pMesBar = (progressBase.mes === "meta") ? pctMeta(r.qtd_mes, mM) : pctShare(r.qtd_mes, totals.mes);
+                    const labelMesFinal = (showMode === 'value') ? r.qtd_mes : pctShare(r.qtd_mes, totals.mes);
 
-            html += `<td class="rk-cell" style="min-width:${minWidthBar}px">
-        <div class="rk-progress-wrap">
-          <div class="rk-progress"><div class="rk-bar ${colorByThreshold(pMesBar, thresholds)}" id="${cid}-bar-m-${i}" style="width:0%"></div></div>
-          <div class="rk-progress-label"><span class="rk-val" id="${cid}-val-m-${i}" data-final="${labelMesFinal}">0</span></div>
-        </div>
-      </td>`;
+                    html += `<td class="rk-cell" style="min-width:${minWidthBar}px">
+                <div class="rk-progress-wrap">
+                <div class="rk-progress"><div class="rk-bar ${colorByThreshold(pMesBar, thresholds)}" id="${cid}-bar-m-${i}" style="width:0%"></div></div>
+                <div class="rk-progress-label"><span class="rk-val" id="${cid}-val-m-${i}" data-final="${labelMesFinal}">0</span></div>
+                </div>
+            </td>`;
 
         } else {
             cols.forEach((c, j) => {
@@ -679,6 +676,23 @@ function renderTop3Card({
     const top3 = rows.slice(0, 3);
     const total = rows.reduce((s, r) => s + (Number(r[field]) || 0), 0);
     const maxVal = top3.reduce((m, r) => Math.max(m, Number(r[field]) || 0), 0) || 1;
+    // === EMPTY STATE (sem dados no período) ===
+    const hasAnyValue = top3.some(r => Number(r?.[field]) > 0);
+    if (!hasAnyValue) {
+        const emptyHtml = `<div class="text-center py-3 text-muted">Sem dados no período</div>`;
+        // se o card for "bare" (sem cabeçalho), renderiza só a mensagem
+        // senão, renderiza mensagem dentro de um card simples
+        if (bare) {
+            $(container).html(emptyHtml);
+        } else {
+            $(container).html(`
+            <div class="top3-card dense">
+                <div class="top3-list">${emptyHtml}</div>
+            </div>
+            `);
+        }
+        return; // não continua o render
+    }
 
     let open = "", head = "", close = "";
     if (!bare) {
@@ -760,5 +774,33 @@ function renderTop3CardToggle({ container, data, title, icon = "🏆", fields })
         });
     });
 }
+
+// memória simples do filtro atual
+window.__top3FiltroAtivo = null;
+// aplica/limpa filtro nas três tabelas (#card01/#card02/#card03)
+function aplicarFiltroTop3(nome) {
+    const alvo = (nome || "").toLowerCase().trim();
+    ['#card01', '#card02', '#card03'].forEach(sel => {
+        const $rows = $(sel).find('tbody tr');
+        if (!alvo) {
+            $rows.removeClass('rk-row-hide'); // mostra tudo
+            return;
+        }
+        $rows.each(function () {
+            const $nm = $(this).find('.rk-name');
+            const txt = ($nm.attr('title') || $nm.text() || "").toLowerCase();
+            $(this).toggleClass('rk-row-hide', !txt.includes(alvo));
+        });
+    });
+}
+
+// clique em qualquer item do Top3
+$(document).on('click', '.top3-item', function () {
+    const nome = $(this).find('.top3-name').attr('title') || $(this).find('.top3-name').text();
+    const mesmo = (window.__top3FiltroAtivo || "").toLowerCase() === (nome || "").toLowerCase();
+    window.__top3FiltroAtivo = mesmo ? null : nome;     // toggle
+    aplicarFiltroTop3(window.__top3FiltroAtivo);
+});
+
 
 
