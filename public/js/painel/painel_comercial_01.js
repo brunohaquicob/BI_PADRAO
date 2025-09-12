@@ -61,12 +61,54 @@ async function __buscarDados() {
 
 async function tratarRetorno2(dados) {
 
-    renderSmallBoxes(dados.cards_total, {
-        container: "#kpis-row",
-        colClass: "col-4",
-        defaultColor: "bg-light",
-        defaultIcon: "ion ion-stats-bars"
+    // renderSmallBoxes(dados.cards_total, {
+    //     container: "#kpis-row",
+    //     colClass: "col-4",
+    //     defaultColor: "bg-light",
+    //     defaultIcon: "ion ion-stats-bars"
+    // });
+
+    // APAGA os small boxes antigos
+    $("#kpis-row").empty();
+
+    // Linha: HOJE
+    // renderTop3Row("#kpis-row", [
+    //     { id: "ac_hoje", data: dados.rank.acionamento, field: "qtd_hoje", title: "Acionamentos • Hoje", icon: "📞", decimals: 0 },
+    //     { id: "acord_hoje", data: dados.rank.acordo, field: "qtd_hoje", title: "Acordos • Hoje", icon: "🤝", decimals: 0 },
+    //     { id: "pag_hoje", data: dados.rank.pagamento, field: "qtd_hoje", title: "Pagamentos • Hoje", icon: "💰", decimals: 2, prefix: "R$ " }
+    // ]);
+
+    // // Linha: MÊS
+    // renderTop3Row("#kpis-row", [
+    //     { id: "ac_mes", data: dados.rank.acionamento, field: "qtd_mes", title: "Acionamentos • Mês", icon: "📅", decimals: 0 },
+    //     { id: "acord_mes", data: dados.rank.acordo, field: "qtd_mes", title: "Acordos • Mês", icon: "📅", decimals: 0 },
+    //     { id: "pag_mes", data: dados.rank.pagamento, field: "qtd_mes", title: "Pagamentos • Mês", icon: "📅", decimals: 2, prefix: "R$ " }
+    // ]);
+
+    $("#kpis-row").empty();
+    const row = $('<div class="row w-100 mx-0"></div>').appendTo("#kpis-row");
+
+    $('<div class="col-xl-4 col-lg-6 col-12 mb-3"><div id="t3_acao"></div></div>').appendTo(row);
+    $('<div class="col-xl-4 col-lg-6 col-12 mb-3"><div id="t3_acor"></div></div>').appendTo(row);
+    $('<div class="col-xl-4 col-lg-6 col-12 mb-3"><div id="t3_pag"></div></div>').appendTo(row);
+
+    renderTop3CardToggle({
+        container: '#t3_acao', title: 'Top 3 - Acionamentos', icon: '📞', data: dados.rank.acionamento,
+        fields: [{ key: 'qtd_hoje', label: 'Hoje', decimals: 0 },
+        { key: 'qtd_mes', label: 'Mês', decimals: 0 }]
     });
+    renderTop3CardToggle({
+        container: '#t3_acor', title: 'Top 3 - Acordos', icon: '🤝', data: dados.rank.acordo,
+        fields: [{ key: 'qtd_hoje', label: 'Hoje', decimals: 0 },
+        { key: 'qtd_mes', label: 'Mês', decimals: 0 }]
+    });
+    renderTop3CardToggle({
+        container: '#t3_pag', title: 'Top 3 - Pagamentos', icon: '💰', data: dados.rank.pagamento,
+        fields: [{ key: 'qtd_hoje', label: 'Hoje', decimals: 2, prefix: 'R$ ' },
+        { key: 'qtd_mes', label: 'Mês', decimals: 2, prefix: 'R$ ' }]
+    });
+
+
 
     const header_acionamento = [
         { key: "name", label: "Colaborador", type: "name", compact: true, compactLen: 15 },
@@ -91,12 +133,12 @@ async function tratarRetorno2(dados) {
     renderRankingPanelFlex(dados.rank.acionamento, {
         containerId: "card01",
         title: "Acionamentos",
-        titleIcon: "📈",
+        titleIcon: "📞",
         // mapeia suas colunas e configura cada uma
         header: header_acionamento,
         // ordenar pela coluna 'val2'
         sortBy: "qtd_mes",
-        limit: 15,
+        limit: 12,
         animDuration: 900,
         compact: true,
         fitMode: "scroll",
@@ -106,10 +148,10 @@ async function tratarRetorno2(dados) {
     renderRankingPanelFlex(dados.rank.acordo, {
         containerId: "card02",
         title: "Acordos",
-        titleIcon: "📈",
+        titleIcon: "🤝",
         header: header_acordo,
         sortBy: "qtd_mes",
-        limit: 15,
+        limit: 12,
         animDuration: 900,
         compact: true,
         fitMode: "scroll",
@@ -119,10 +161,10 @@ async function tratarRetorno2(dados) {
     renderRankingPanelFlex(dados.rank.pagamento, {
         containerId: "card03",
         title: "Pagamentos",
-        titleIcon: "📈",
+        titleIcon: "💰",
         header: header_pagamento,
         sortBy: "qtd_mes",
-        limit: 15,
+        limit: 12,
         animDuration: 900,
         compact: true,
         fitMode: "scroll",
@@ -591,3 +633,132 @@ function renderRankingPanelFlex(data, opts = {}) {
         }
     });
 }
+
+// ===== Helpers
+function compactNameDefault(nome, maxLen = 15) {
+    if (!nome) return "";
+    const parts = String(nome).replace(/[\.\-_]+/g, " ").replace(/\s+/g, " ").trim()
+        .split(" ").filter(Boolean)
+        .map(p => p.charAt(0).toUpperCase() + p.slice(1).toLowerCase());
+    if (!parts.length) return "";
+    let out = parts[0];
+    for (let i = 1; i < parts.length; i++) {
+        const next = parts[i]; if (out.length + 1 + next.length <= maxLen) { out += " " + next; continue; }
+        const avail = maxLen - out.length; if (avail >= 3) { out += " " + next.slice(0, avail - 2) + "."; }
+        break;
+    }
+    return out;
+}
+function fmt(num, dec = 0, pre = "", suf = "") {
+    const n = Number(num || 0);
+    return pre + n.toLocaleString('pt-BR', { minimumFractionDigits: dec, maximumFractionDigits: dec }) + suf;
+}
+
+// ===== Renderiza uma linha com 3 cards (colunas bootstrap)
+function renderTop3Row(targetRowSel, cards) {
+    const $row = $(targetRowSel);
+    const cols = cards.map((c, i) => `<div class="col-md-4 col-12 mb-3"><div id="__top3_${c.id || ('c' + i)}"></div></div>`).join("");
+    $row.append(`<div class="row w-100 mx-0">${cols}</div>`);
+    cards.forEach((cfg, i) => {
+        renderTop3Card({
+            container: `#__top3_${cfg.id || ('c' + i)}`,
+            data: cfg.data, field: cfg.field,
+            title: cfg.title, icon: cfg.icon,
+            decimals: cfg.decimals || 0, prefix: cfg.prefix || "", suffix: cfg.suffix || ""
+        });
+    });
+}
+
+function renderTop3Card({
+    container, data, field, title, icon = "🏆",
+    decimals = 0, prefix = "", suffix = "", compactLen = 16,
+    bare = false // <= novo
+}) {
+    const rows = Array.isArray(data) ? data.slice() : [];
+    rows.sort((a, b) => (Number(b[field]) || 0) - (Number(a[field]) || 0));
+    const top3 = rows.slice(0, 3);
+    const total = rows.reduce((s, r) => s + (Number(r[field]) || 0), 0);
+    const maxVal = top3.reduce((m, r) => Math.max(m, Number(r[field]) || 0), 0) || 1;
+
+    let open = "", head = "", close = "";
+    if (!bare) {
+        open = `<div class="top3-card">`;
+        head = `<div class="top3-head">
+              <div class="left"><span class="icon">${icon}</span><span>${title || ""}</span></div>
+            </div>`;
+        close = `</div>`;
+    }
+
+    let html = `${open}${head}<div class="top3-list">`;
+    const medalCls = ["gold", "silver", "bronze"];
+
+    function line(i, r) {
+        const v = r ? Number(r[field]) || 0 : 0;
+        const share = total > 0 ? (v / total) * 100 : 0;
+        const name = r ? compactNameDefault(r.name, compactLen) : "—";
+        const barPct = maxVal > 0 ? (v / maxVal) * 100 : 0;
+        const rankCls = i === 0 ? 'gold' : (i === 1 ? 'silver' : 'bronze');
+        return `
+      <div class="top3-item ${rankCls}">
+        <div class="top3-medal ${medalCls[i]}">${i + 1}</div>
+        <div>
+          <div class="top3-name" title="${r ? (r.name || '').replace(/"/g, '&quot;') : ''}">${name}</div>
+          <div class="top3-sub">${r ? fmt(share, 1, "", "%") : "—"} de participação</div>
+        </div>
+        <div class="top3-right">${r ? fmt(v, decimals, prefix, suffix) : "—"}</div>
+        <div class="top3-bar-wrap"><div class="top3-bar"><span style="width:0%"></span></div></div>
+      </div>`;
+    }
+
+    for (let i = 0; i < 3; i++) html += line(i, top3[i]);
+    html += `</div>${close}`;
+
+    $(container).html(html);
+
+    // anima a barra
+    $(container).find(".top3-item").each(function (i) {
+        const $bar = $(this).find(".top3-bar > span");
+        const v = top3[i] ? Number(top3[i][field]) || 0 : 0;
+        const pct = maxVal > 0 ? (v / maxVal) * 100 : 0;
+        setTimeout(() => $bar.css("width", pct + "%"), 50 + i * 80);
+    });
+}
+
+
+function renderTop3CardToggle({ container, data, title, icon = "🏆", fields }) {
+    $(container).html(`
+    <div class="top3-card dense">
+      <div class="top3-head">
+        <div class="left"><span class="icon">${icon}</span><span>${title}</span></div>
+        <div class="btn-group btn-group-sm modes" role="group">
+          ${fields.map((f, i) => `
+            <button class="btn btn-xs ${i ? 'btn-light' : 'btn-primary active'}"
+                    data-field="${f.key}" data-decimals="${f.decimals || 0}"
+                    data-prefix="${f.prefix || ''}" data-suffix="${f.suffix || ''}">
+              ${f.label}
+            </button>`).join("")}
+        </div>
+      </div>
+      <div class="top3-slot"></div>
+    </div>`);
+
+    const renderMode = f => renderTop3Card({
+        container: container + " .top3-slot",
+        data, field: f.key, decimals: f.decimals || 0, prefix: f.prefix || "", suffix: f.suffix || "",
+        bare: true // <= aqui! só a lista, sem cabeçalho/ícone
+    });
+
+    renderMode(fields[0]);
+    $(container).on('click', '.modes .btn', function () {
+        $(this).addClass('btn-primary active').removeClass('btn-light')
+            .siblings().removeClass('btn-primary active').addClass('btn-light');
+        renderMode({
+            key: $(this).data('field'),
+            decimals: Number($(this).data('decimals') || 0),
+            prefix: $(this).data('prefix') || '',
+            suffix: $(this).data('suffix') || '',
+        });
+    });
+}
+
+

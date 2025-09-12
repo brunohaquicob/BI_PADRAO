@@ -425,6 +425,168 @@
                 min-height: 0;
                 overflow: auto;
             }
+
+            /* ====== TOP3 / PÓDIUM ====== */
+            .top3-card {
+                background: #fff;
+                border: 1px solid #e9ecef;
+                border-radius: 16px;
+                box-shadow: 0 4px 14px rgba(0, 0, 0, .06);
+            }
+
+            .top3-head {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                padding: .6rem .8rem;
+                font-weight: 700;
+                color: #212529;
+            }
+
+            .top3-head .left {
+                display: flex;
+                align-items: center;
+                gap: .5rem
+            }
+
+            .top3-head .icon {
+                width: 28px;
+                height: 28px;
+                border-radius: 50%;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                background: linear-gradient(135deg, #0d6efd, #5bc0ff);
+                color: #fff;
+                font-size: 14px;
+                box-shadow: 0 2px 8px rgba(13, 110, 253, .35);
+            }
+
+            .top3-list {
+                padding: .6rem .8rem;
+                padding-top: .2rem
+            }
+
+            .top3-item {
+                display: grid;
+                grid-template-columns: auto 1fr auto;
+                grid-column-gap: .6rem;
+                grid-row-gap: .15rem;
+                align-items: center;
+                background: #f8f9fa;
+                border: 1px solid #edf0f3;
+                border-radius: 12px;
+                padding: .45rem .55rem;
+                margin: .35rem 0;
+            }
+
+            .top3-medal {
+                width: 30px;
+                height: 30px;
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-weight: 800;
+                color: #fff;
+                text-shadow: 0 1px 0 rgba(0, 0, 0, .25);
+                box-shadow: 0 3px 10px rgba(0, 0, 0, .15);
+            }
+
+            .top3-medal.gold {
+                background: linear-gradient(135deg, #f6d365, #fda085)
+            }
+
+            .top3-medal.silver {
+                background: linear-gradient(135deg, #bdc3c7, #e0e0e0)
+            }
+
+            .top3-medal.bronze {
+                background: linear-gradient(135deg, #d1913c, #a4552a);
+            }
+
+            .top3-name {
+                font-weight: 700;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                max-width: 220px;
+            }
+
+            .top3-right {
+                text-align: right;
+                font-weight: 700;
+            }
+
+            .top3-sub {
+                font-size: .78rem;
+                opacity: .85;
+                font-weight: 600;
+            }
+
+            .top3-bar-wrap {
+                grid-column: 2 / span 2;
+            }
+
+            .top3-bar {
+                height: 12px;
+                border-radius: 9999px;
+                background: #eef2f7;
+                border: 1px solid #e9ecef;
+                overflow: hidden;
+            }
+
+            .top3-bar>span {
+                display: block;
+                height: 100%;
+                width: 0%;
+                transition: width .8s ease;
+                background-image: linear-gradient(90deg, #22c55e 0%, #16a34a 50%, #22c55e 100%);
+            }
+
+            .top3-item.silver .top3-bar>span {
+                background-image: linear-gradient(90deg, #60a5fa 0%, #3b82f6 50%, #60a5fa 100%)
+            }
+
+            .top3-item.bronze .top3-bar>span {
+                background-image: linear-gradient(90deg, #f59e0b 0%, #d97706 50%, #f59e0b 100%)
+            }
+
+            /* responsivo */
+            @media (max-width: 991.98px) {
+                .top3-name {
+                    max-width: 160px
+                }
+            }
+
+            .top3-item.gold {
+                box-shadow: 0 0 0 3px rgba(255, 221, 87, .25) inset;
+            }
+
+            /* modo compacto */
+            .top3-card.dense .top3-head {
+                padding: .45rem .65rem;
+            }
+
+            .top3-card.dense .top3-list {
+                padding: .45rem .65rem;
+            }
+
+            .top3-card.dense .top3-item {
+                padding: .35rem .5rem;
+            }
+
+            .top3-card.dense .top3-bar {
+                height: 10px;
+            }
+
+            @media (max-height: 820px) {
+                .top3-sub {
+                    display: none;
+                }
+            }
+
+            /* esconde a linha de participação em telas baixas */
         </style>
     @endpush
     @push('js')
