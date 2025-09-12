@@ -133,8 +133,6 @@ async function tratarRetorno2(dados) {
     const metas = getMetas();
     const { header_acionamento, header_acordo, header_pagamento } = buildHeaders(metas);
 
-
-
     renderRankingPanelFlex(dados.rank.acionamento, {
         containerId: "card01",
         title: "Acionamentos",
