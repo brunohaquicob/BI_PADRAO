@@ -58,6 +58,8 @@ $(document).ready(function () {
         badge: "#refreshCountdown",
         onRefresh: __buscarDados
     });
+
+    updateMetaPill();
 });
 
 async function __buscarDados() {
@@ -140,10 +142,25 @@ function toggleManualInputs(disabled) {
     $('.js-meta').prop('disabled', !!disabled).toggleClass('disabled', !!disabled);
 }
 
+function updateMetaPill() {
+    const mode = getMetaMode();           // 'manual' | 'topn'
+    const n = (typeof getTopN === 'function') ? getTopN() : 3;
+    const hasFactor = (typeof getTopNFactor === 'function');
+    const factorPct = hasFactor ? Math.round(getTopNFactor() * 100) : 100;
+
+    let txt = (mode === 'topn') ? `Metas: Top-${n}` : 'Metas: Fixas';
+    if (mode === 'topn' && hasFactor && factorPct !== 100) {
+        txt += ` × ${factorPct}%`;
+    }
+    $('#metaModePill')
+        .text(txt)
+        .removeClass('badge-info badge-warning')
+        .addClass(mode === 'topn' ? 'badge-warning' : 'badge-info');
+}
 
 
 async function tratarRetorno2(dados) {
-
+    
     // renderSmallBoxes(dados.cards_total, {
     //     container: "#kpis-row",
     //     colClass: "col-4",
@@ -259,6 +276,8 @@ async function tratarRetorno2(dados) {
         minWidthBar: 130, minWidthMini: 96, minWidthBadge: 90, minWidthNone: 80,
         aggregatePlacement: "header",
     });
+
+    updateMetaPill();
 }
 
 function numBR(v) {

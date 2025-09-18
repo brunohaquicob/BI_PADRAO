@@ -174,6 +174,8 @@
                     <i class="fas fa-bolt mr-1"></i>
                     Desativado
                 </span>
+                <span id="metaModePill" class="badge badge-info ml-2">Metas: Fixas</span>
+
             </h3>
             <div class="card-tools align-items-center">
                 <ul class="nav nav-pills ml-auto" style="margin-bottom:-1.8rem;">
