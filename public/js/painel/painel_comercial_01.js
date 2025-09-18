@@ -21,6 +21,7 @@ $(document).ready(function () {
         const m = $(this).val();
         setMetaMode(m);
         toggleManualInputs(m === 'topn');
+        updateMetaPill();
         if (window.__dadosPainel) tratarRetorno2(window.__dadosPainel);
     });
 
