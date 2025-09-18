@@ -29,13 +29,13 @@
                                 <div class="col">
                                     <div class="input-group input-group-sm">
                                         <div class="input-group-prepend"><span class="input-group-text">Hoje</span></div>
-                                        <input type="number" min="0" step="1" class="form-control js-meta" id="meta_acao_hoje" name="meta_acao_hoje" value="40">
+                                        <input type="number" min="0" step="1" class="form-control js-meta" id="meta_acao_hoje" name="meta_acao_hoje" value="0">
                                     </div>
                                 </div>
                                 <div class="col">
                                     <div class="input-group input-group-sm">
                                         <div class="input-group-prepend"><span class="input-group-text">Mês</span></div>
-                                        <input type="number" min="0" step="1" class="form-control js-meta" id="meta_acao_mes" name="meta_acao_mes" value="700">
+                                        <input type="number" min="0" step="1" class="form-control js-meta" id="meta_acao_mes" name="meta_acao_mes" value="0">
                                     </div>
                                 </div>
                             </div>
@@ -50,13 +50,13 @@
                                 <div class="col">
                                     <div class="input-group input-group-sm">
                                         <div class="input-group-prepend"><span class="input-group-text">Hoje</span></div>
-                                        <input type="number" min="0" step="1" class="form-control js-meta" id="meta_acordo_hoje" name="meta_acordo_hoje" value="5">
+                                        <input type="number" min="0" step="1" class="form-control js-meta" id="meta_acordo_hoje" name="meta_acordo_hoje" value="0">
                                     </div>
                                 </div>
                                 <div class="col">
                                     <div class="input-group input-group-sm">
                                         <div class="input-group-prepend"><span class="input-group-text">Mês</span></div>
-                                        <input type="number" min="0" step="1" class="form-control js-meta" id="meta_acordo_mes" name="meta_acordo_mes" value="100">
+                                        <input type="number" min="0" step="1" class="form-control js-meta" id="meta_acordo_mes" name="meta_acordo_mes" value="0">
                                     </div>
                                 </div>
                             </div>
@@ -71,19 +71,42 @@
                                 <div class="col">
                                     <div class="input-group input-group-sm">
                                         <div class="input-group-prepend"><span class="input-group-text">Hoje</span></div>
-                                        <input type="number" min="0" step="0.01" class="form-control js-meta" id="meta_pag_hoje" name="meta_pag_hoje" value="10000">
+                                        <input type="number" min="0" step="0.01" class="form-control js-meta" id="meta_pag_hoje" name="meta_pag_hoje" value="0">
                                     </div>
                                 </div>
                                 <div class="col">
                                     <div class="input-group input-group-sm">
                                         <div class="input-group-prepend"><span class="input-group-text">Mês</span></div>
-                                        <input type="number" min="0" step="0.01" class="form-control js-meta" id="meta_pag_mes" name="meta_pag_mes" value="100000">
+                                        <input type="number" min="0" step="0.01" class="form-control js-meta" id="meta_pag_mes" name="meta_pag_mes" value="0">
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
+
+                <div class="row">
+                    <div class="col-md-3">
+                        <div class="form-group mb-2">
+                            <label class="mb-1">Modo das metas</label>
+                            <select class="form-control selectpickernovo" id="modo_metas" name="modo_metas" data-camponame="Modo das metas">
+                                <option value="topn">Automáticas (média do Top N)</option>
+                                <option value="manual">Fixas (campos acima)</option>
+                            </select>
+                            <small class="text-muted d-block mt-1">
+                                Em “Automáticas”, os campos de meta ficam desabilitados.
+                            </small>
+                        </div>
+                    </div>
+
+                    <div class="col-md-2">
+                        <div class="form-group mb-2">
+                            <label class="mb-1">Top N</label>
+                            <input type="number" min="1" step="1" class="form-control" id="topn_metas" name="topn_metas" value="3">
+                        </div>
+                    </div>
+                </div>
+
 
                 <div class="row">
                     <div class="col-md-3">

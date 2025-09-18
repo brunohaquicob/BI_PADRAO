@@ -3,14 +3,47 @@
 $(document).ready(function () {
     carregarCoresGraficos();
     gerarSelectPicker(".multiselect-bs4");
+    // opcional: estilizar o novo select
+    if (typeof gerarSelectPicker === 'function') {
+        // try { gerarSelectPicker("#modo_metas"); } catch (e) { }
+    }
+
+    // restaurar preferências
+    restoreManualMetas();
+    const mode = getMetaMode();
+    $('#modo_metas').val(mode);
+    const savedTopN = getTopN();
+    $('#topn_metas').val(savedTopN);
+    toggleManualInputs(mode === 'topn');
+
+    // listeners
+    $('#modo_metas').on('change', function () {
+        const m = $(this).val();
+        setMetaMode(m);
+        toggleManualInputs(m === 'topn');
+        if (window.__dadosPainel) tratarRetorno2(window.__dadosPainel);
+    });
+
+    $('#topn_metas').on('input change', function () {
+        const n = Number($(this).val() || 3);
+        setTopN(n);
+        if (getMetaMode() === 'topn' && window.__dadosPainel) {
+            tratarRetorno2(window.__dadosPainel);
+        }
+    });
+
+    // salvar valores manuais conforme digita (e re-render só se for modo manual)
+    $('.js-meta').on('input change', function () {
+        saveManualMetas();
+        if (getMetaMode() === 'manual' && window.__dadosPainel) {
+            tratarRetorno2(window.__dadosPainel);
+        }
+    });
 
     $('#btnBuscarDados').click(function () {
         FormValidator.validar('form_filtros_pesquisa').then((isValid) => {
-            if (isValid) {
-                __buscarDados();
-            }
+            if (isValid) { __buscarDados(); }
         });
-
     });
 
     setupAutoRefresh({
@@ -18,8 +51,8 @@ $(document).ready(function () {
         badge: "#refreshCountdown",
         onRefresh: __buscarDados
     });
-
 });
+
 
 
 
@@ -40,10 +73,9 @@ async function __buscarDados() {
                 //SweetAlert.info(response.msg);
                 alertar(response.msg, '', 'info');
             }
-            if (response.data.htmlDownload !== undefined && response.data.htmlDownload != '') {
-                // Se o status for verdadeiro, então há um arquivo para download
-                var html = response.data.htmlDownload;
-                $('#' + div_retorno).html(response.data.htmlDownload);
+            if (response.data.htmlDownload) {
+                $('#card_resultados').html(response.data.htmlDownload);
+                return;
             } else {
                 if (response.data !== undefined && response.data != '') {
                     tratarRetorno2(response.data);
@@ -57,6 +89,53 @@ async function __buscarDados() {
         alertar(error, "", "error");
     });
 }
+
+const META_MODE_KEY = 'painel_metas_modo';           // 'manual' | 'topn'
+const META_TOPN_KEY = 'painel_metas_topn';           // ex.: 3
+const META_MANUAL_KEY = 'painel_metas_manual_vals';  // salva valores digitados
+
+function getMetaMode() {
+    return (localStorage.getItem(META_MODE_KEY) || 'manual');
+}
+function setMetaMode(v) {
+    localStorage.setItem(META_MODE_KEY, v);
+}
+function getTopN() {
+    const n = Number(localStorage.getItem(META_TOPN_KEY) || $('#topn_metas').val() || 3);
+    return Number.isFinite(n) && n >= 1 ? n : 3;
+}
+function setTopN(n) {
+    localStorage.setItem(META_TOPN_KEY, String(n));
+}
+function saveManualMetas() {
+    const obj = {
+        ac_hoje: $('#meta_acao_hoje').val(),
+        ac_mes: $('#meta_acao_mes').val(),
+        acor_hoje: $('#meta_acordo_hoje').val(),
+        acor_mes: $('#meta_acordo_mes').val(),
+        pag_hoje: $('#meta_pag_hoje').val(),
+        pag_mes: $('#meta_pag_mes').val(),
+    };
+    localStorage.setItem(META_MANUAL_KEY, JSON.stringify(obj));
+}
+function restoreManualMetas() {
+    try {
+        const raw = localStorage.getItem(META_MANUAL_KEY);
+        if (!raw) return;
+        const obj = JSON.parse(raw);
+        if (!obj) return;
+        $('#meta_acao_hoje').val(obj.ac_hoje ?? 0);
+        $('#meta_acao_mes').val(obj.ac_mes ?? 0);
+        $('#meta_acordo_hoje').val(obj.acor_hoje ?? 0);
+        $('#meta_acordo_mes').val(obj.acor_mes ?? 0);
+        $('#meta_pag_hoje').val(obj.pag_hoje ?? 0);
+        $('#meta_pag_mes').val(obj.pag_mes ?? 0);
+    } catch (e) { }
+}
+function toggleManualInputs(disabled) {
+    $('.js-meta').prop('disabled', !!disabled).toggleClass('disabled', !!disabled);
+}
+
 
 
 async function tratarRetorno2(dados) {
@@ -130,8 +209,10 @@ async function tratarRetorno2(dados) {
     // ];
 
     window.__dadosPainel = dados; // deixa disponível para re-render ao mudar metas
-    const metas = getMetas();
+    // const metas = getMetas();
+    const metas = getMetasEffective(dados);
     const { header_acionamento, header_acordo, header_pagamento } = buildHeaders(metas);
+
 
     renderRankingPanelFlex(dados.rank.acionamento, {
         containerId: "card01",
@@ -184,7 +265,6 @@ function numBR(v) {
     const n = Number(v);
     return isNaN(n) ? 0 : n;
 }
-
 function getMetas() {
     return {
         ac: { hoje: numBR($('#meta_acao_hoje').val()), mes: numBR($('#meta_acao_mes').val()) },
@@ -192,6 +272,72 @@ function getMetas() {
         pag: { hoje: numBR($('#meta_pag_hoje').val()), mes: numBR($('#meta_pag_mes').val()) }
     };
 }
+
+function getMetasTop3(dados) {
+
+    const pagamento_mediaHoje = mediaTopN({
+        data: dados.rank.pagamento,
+        media_de: 3,
+        key: 'qtd_hoje'
+    });
+    const pagamento_mediaMes = mediaTopN({
+        data: dados.rank.pagamento,
+        media_de: 3,
+        key: 'qtd_mes'
+    });
+
+    const acordo_mediaHoje = mediaTopN({
+        data: dados.rank.acordo,
+        media_de: 3,
+        key: 'qtd_hoje'
+    });
+    const acordo_mediaMes = mediaTopN({
+        data: dados.rank.acordo,
+        media_de: 3,
+        key: 'qtd_mes'
+    });
+
+    const acionamento_mediaHoje = mediaTopN({
+        data: dados.rank.acionamento,
+        media_de: 3,
+        key: 'qtd_hoje'
+    });
+    const acionamento_mediaMes = mediaTopN({
+        data: dados.rank.acionamento,
+        media_de: 3,
+        key: 'qtd_mes'
+    });
+
+    return {
+        ac: { hoje: acionamento_mediaHoje, mes: acionamento_mediaMes },
+        acor: { hoje: acordo_mediaHoje, mes: acordo_mediaMes },
+        pag: { hoje: pagamento_mediaHoje, mes: pagamento_mediaMes }
+    };
+}
+
+function getMetasEffective(dados) {
+    return (getMetaMode() === 'topn')
+        ? getMetasTopN(dados, getTopN())
+        : getMetas();
+}
+
+// reimplementa a antiga getMetasTop3 como genérica TopN
+function getMetasTopN(dados, topN = 3) {
+    const safe = (arr) => Array.isArray(arr) ? arr : [];
+
+    const calc = (dataArr, key) => mediaTopN({
+        data: safe(dataArr),
+        media_de: Number(topN) || 3,
+        key
+    });
+
+    return {
+        ac: { hoje: calc(dados?.rank?.acionamento, 'qtd_hoje'), mes: calc(dados?.rank?.acionamento, 'qtd_mes') },
+        acor: { hoje: calc(dados?.rank?.acordo, 'qtd_hoje'), mes: calc(dados?.rank?.acordo, 'qtd_mes') },
+        pag: { hoje: calc(dados?.rank?.pagamento, 'qtd_hoje'), mes: calc(dados?.rank?.pagamento, 'qtd_mes') },
+    };
+}
+
 
 function buildHeaders(m) {
     const header_acionamento = [
@@ -238,13 +384,211 @@ function buildHeaders(m) {
 
     return { header_acionamento, header_acordo, header_pagamento };
 }
+
+
+/**
+ * Média do Top-N para uma chave numérica.
+ * Ex.: mediaTopN({ data: dados.rank.pagamento, media_de: 3, key: 'qtd_hoje' })
+ *
+ * Regras:
+ * - Converte valores não numéricos para 0
+ * - Ordena desc e pega os N maiores
+ * - Divide pela quantidade encontrada (1..N). Se quiser dividir sempre por N, veja a obs. abaixo.
+ *
+ * @param {Object[]} opts.data      Array de objetos
+ * @param {string}   opts.key       Chave numérica a considerar (ex: 'qtd_hoje')
+ * @param {number}   opts.media_de  Tamanho do Top-N (ex: 3)
+ * @returns {number} média do Top-N
+ */
+function mediaTopN({ data, key, media_de = 3 }) {
+    if (!Array.isArray(data) || !key || media_de <= 0) return 0;
+
+    const topN = data
+        .map(r => Number(r?.[key]) || 0)
+        .sort((a, b) => b - a)
+        .slice(0, media_de);
+
+    if (topN.length === 0) return 0;
+
+    const soma = topN.reduce((s, v) => s + v, 0);
+    return soma / topN.length; // divide pelo que existir (1..N)
+}
+
 $('.js-meta').on('change input', function () {
     if (window.__dadosPainel) {
         // re-render com novas metas
         tratarRetorno2(window.__dadosPainel);
     }
 });
+// ===== Helpers
+function compactNameDefault(nome, maxLen = 15) {
+    if (!nome) return "";
+    const parts = String(nome).replace(/[\.\-_]+/g, " ").replace(/\s+/g, " ").trim()
+        .split(" ").filter(Boolean)
+        .map(p => p.charAt(0).toUpperCase() + p.slice(1).toLowerCase());
+    if (!parts.length) return "";
+    let out = parts[0];
+    for (let i = 1; i < parts.length; i++) {
+        const next = parts[i]; if (out.length + 1 + next.length <= maxLen) { out += " " + next; continue; }
+        const avail = maxLen - out.length; if (avail >= 3) { out += " " + next.slice(0, avail - 2) + "."; }
+        break;
+    }
+    return out;
+}
+function fmt(num, dec = 0, pre = "", suf = "") {
+    const n = Number(num || 0);
+    return pre + n.toLocaleString('pt-BR', { minimumFractionDigits: dec, maximumFractionDigits: dec }) + suf;
+}
 
+// ===== Renderiza uma linha com 3 cards (colunas bootstrap)
+function renderTop3Row(targetRowSel, cards) {
+    const $row = $(targetRowSel);
+    const cols = cards.map((c, i) => `<div class="col-md-4 col-12 mb-3"><div id="__top3_${c.id || ('c' + i)}"></div></div>`).join("");
+    $row.append(`<div class="row w-100 mx-0">${cols}</div>`);
+    cards.forEach((cfg, i) => {
+        renderTop3Card({
+            container: `#__top3_${cfg.id || ('c' + i)}`,
+            data: cfg.data, field: cfg.field,
+            title: cfg.title, icon: cfg.icon,
+            decimals: cfg.decimals || 0, prefix: cfg.prefix || "", suffix: cfg.suffix || ""
+        });
+    });
+}
+
+
+function renderTop3CardToggle({ container, data, title, icon = "🏆", fields }) {
+    $(container).html(`
+        <div class="top3-card dense">
+        <div class="top3-head">
+            <div class="left"><span class="icon">${icon}</span><span>${title}</span></div>
+            <div class="btn-group btn-group-sm modes" role="group">
+            ${fields.map((f, i) => `
+                <button class="btn btn-xs ${i ? 'btn-light' : 'btn-primary active'}"
+                        data-field="${f.key}" data-decimals="${f.decimals || 0}"
+                        data-prefix="${f.prefix || ''}" data-suffix="${f.suffix || ''}">
+                ${f.label}
+                </button>`).join("")}
+            </div>
+        </div>
+        <div class="top3-slot"></div>
+        </div>`);
+
+    const renderMode = f => renderTop3Card({
+        container: container + " .top3-slot",
+        data, field: f.key, decimals: f.decimals || 0, prefix: f.prefix || "", suffix: f.suffix || "",
+        bare: true // <= aqui! só a lista, sem cabeçalho/ícone
+    });
+
+    renderMode(fields[0]);
+    $(container).on('click', '.modes .btn', function () {
+        $(this).addClass('btn-primary active').removeClass('btn-light')
+            .siblings().removeClass('btn-primary active').addClass('btn-light');
+        renderMode({
+            key: $(this).data('field'),
+            decimals: Number($(this).data('decimals') || 0),
+            prefix: $(this).data('prefix') || '',
+            suffix: $(this).data('suffix') || '',
+        });
+    });
+}
+function renderTop3Card({
+    container, data, field, title, icon = "🏆",
+    decimals = 0, prefix = "", suffix = "", compactLen = 16,
+    bare = false // <= novo
+}) {
+    const rows = Array.isArray(data) ? data.slice() : [];
+    rows.sort((a, b) => (Number(b[field]) || 0) - (Number(a[field]) || 0));
+    const top3 = rows.slice(0, 3);
+    const total = rows.reduce((s, r) => s + (Number(r[field]) || 0), 0);
+    const maxVal = top3.reduce((m, r) => Math.max(m, Number(r[field]) || 0), 0) || 1;
+    // === EMPTY STATE (sem dados no período) ===
+    const hasAnyValue = top3.some(r => Number(r?.[field]) > 0);
+    if (!hasAnyValue) {
+        const emptyHtml = `<div class="text-center py-3 text-muted">Sem dados no período</div>`;
+        // se o card for "bare" (sem cabeçalho), renderiza só a mensagem
+        // senão, renderiza mensagem dentro de um card simples
+        if (bare) {
+            $(container).html(emptyHtml);
+        } else {
+            $(container).html(`
+            <div class="top3-card dense">
+                <div class="top3-list">${emptyHtml}</div>
+            </div>
+            `);
+        }
+        return; // não continua o render
+    }
+
+    let open = "", head = "", close = "";
+    if (!bare) {
+        open = `<div class="top3-card">`;
+        head = `<div class="top3-head">
+              <div class="left"><span class="icon">${icon}</span><span>${title || ""}</span></div>
+            </div>`;
+        close = `</div>`;
+    }
+
+    let html = `${open}${head}<div class="top3-list">`;
+    const medalCls = ["gold", "silver", "bronze"];
+
+    function line(i, r) {
+        const v = r ? Number(r[field]) || 0 : 0;
+        const share = total > 0 ? (v / total) * 100 : 0;
+        const name = r ? compactNameDefault(r.name, compactLen) : "—";
+        const barPct = maxVal > 0 ? (v / maxVal) * 100 : 0;
+        const rankCls = i === 0 ? 'gold' : (i === 1 ? 'silver' : 'bronze');
+        return `
+        <div class="top3-item ${rankCls}">
+            <div class="top3-medal ${medalCls[i]}">${i + 1}</div>
+            <div>
+            <div class="top3-name" title="${r ? (r.name || '').replace(/"/g, '&quot;') : ''}">${name}</div>
+            <div class="top3-sub">${r ? fmt(share, 1, "", "%") : "—"} de participação</div>
+            </div>
+            <div class="top3-right">${r ? fmt(v, decimals, prefix, suffix) : "—"}</div>
+            <div class="top3-bar-wrap"><div class="top3-bar"><span style="width:0%"></span></div></div>
+        </div>`;
+    }
+
+    for (let i = 0; i < 3; i++) html += line(i, top3[i]);
+    html += `</div>${close}`;
+
+    $(container).html(html);
+
+    // anima a barra
+    $(container).find(".top3-item").each(function (i) {
+        const $bar = $(this).find(".top3-bar > span");
+        const v = top3[i] ? Number(top3[i][field]) || 0 : 0;
+        const pct = maxVal > 0 ? (v / maxVal) * 100 : 0;
+        setTimeout(() => $bar.css("width", pct + "%"), 50 + i * 80);
+    });
+}
+
+// memória simples do filtro atual
+window.__top3FiltroAtivo = null;
+// aplica/limpa filtro nas três tabelas (#card01/#card02/#card03)
+function aplicarFiltroTop3(nome) {
+    const alvo = (nome || "").toLowerCase().trim();
+    ['#card01', '#card02', '#card03'].forEach(sel => {
+        const $rows = $(sel).find('tbody tr');
+        if (!alvo) {
+            $rows.removeClass('rk-row-hide'); // mostra tudo
+            return;
+        }
+        $rows.each(function () {
+            const $nm = $(this).find('.rk-name');
+            const txt = ($nm.attr('title') || $nm.text() || "").toLowerCase();
+            $(this).toggleClass('rk-row-hide', !txt.includes(alvo));
+        });
+    });
+}
+
+// clique em qualquer item do Top3
+$(document).on('click', '.top3-item', function () {
+    const nome = $(this).find('.top3-name').attr('title') || $(this).find('.top3-name').text();
+    const mesmo = (window.__top3FiltroAtivo || "").toLowerCase() === (nome || "").toLowerCase();
+    window.__top3FiltroAtivo = mesmo ? null : nome;     // toggle
+    aplicarFiltroTop3(window.__top3FiltroAtivo);
+});
 
 
 function renderRankingPanelFlex(data, opts = {}) {
@@ -567,34 +911,34 @@ function renderRankingPanelFlex(data, opts = {}) {
 
                 if (variant === "none") {
                     html += `<td class="rk-cell rk-cell-plain ${alignCls}" style="min-width:${tdMin}px">
-            <span class="rk-plain-val" id="${cid}-val-${j}-${i}"
-              data-final="${labelFinal}" data-decimals="${decimals}"
-              data-prefix="${prefix}" data-suffix="${suffix}">0</span>
-          </td>`;
+                        <span class="rk-plain-val" id="${cid}-val-${j}-${i}"
+                        data-final="${labelFinal}" data-decimals="${decimals}"
+                        data-prefix="${prefix}" data-suffix="${suffix}">0</span>
+                    </td>`;
 
                 } else if (variant === "badge") {
                     const colorCls = colorByThreshold(colorRef, c.thresholds, !!c.invertColor);
                     html += `<td class="rk-cell rk-cell-badge ${alignCls}" style="min-width:${tdMin}px">
-            <span class="rk-badge ${colorCls}" id="${cid}-val-${j}-${i}"
-              data-final="${labelFinal}" data-decimals="${decimals}"
-              data-prefix="${prefix}" data-suffix="${suffix}">0</span>
-          </td>`;
+                        <span class="rk-badge ${colorCls}" id="${cid}-val-${j}-${i}"
+                        data-final="${labelFinal}" data-decimals="${decimals}"
+                        data-prefix="${prefix}" data-suffix="${suffix}">0</span>
+                    </td>`;
 
                 } else { // "bar" | "mini"
                     const colorCls = colorByThreshold(colorRef, c.thresholds, !!c.invertColor);
                     const miniCls = (variant === "mini") ? "rk-mini" : "";
                     html += `<td class="rk-cell ${miniCls}" style="min-width:${tdMin}px">
-            <div class="rk-progress-wrap">
-              <div class="rk-progress">
-                <div class="rk-bar ${colorCls}" id="${cid}-bar-${j}-${i}" style="width:0%"></div>
-              </div>
-              <div class="rk-progress-label">
-                <span class="rk-val rk-val-${c.key}" id="${cid}-val-${j}-${i}"
-                  data-final="${labelFinal}" data-decimals="${decimals}"
-                  data-prefix="${prefix}" data-suffix="${suffix}">0</span>
-              </div>
-            </div>
-          </td>`;
+                        <div class="rk-progress-wrap">
+                        <div class="rk-progress">
+                            <div class="rk-bar ${colorCls}" id="${cid}-bar-${j}-${i}" style="width:0%"></div>
+                        </div>
+                        <div class="rk-progress-label">
+                            <span class="rk-val rk-val-${c.key}" id="${cid}-val-${j}-${i}"
+                            data-final="${labelFinal}" data-decimals="${decimals}"
+                            data-prefix="${prefix}" data-suffix="${suffix}">0</span>
+                        </div>
+                        </div>
+                    </td>`;
                 }
             });
         }
@@ -707,177 +1051,3 @@ function renderRankingPanelFlex(data, opts = {}) {
         }
     });
 }
-
-// ===== Helpers
-function compactNameDefault(nome, maxLen = 15) {
-    if (!nome) return "";
-    const parts = String(nome).replace(/[\.\-_]+/g, " ").replace(/\s+/g, " ").trim()
-        .split(" ").filter(Boolean)
-        .map(p => p.charAt(0).toUpperCase() + p.slice(1).toLowerCase());
-    if (!parts.length) return "";
-    let out = parts[0];
-    for (let i = 1; i < parts.length; i++) {
-        const next = parts[i]; if (out.length + 1 + next.length <= maxLen) { out += " " + next; continue; }
-        const avail = maxLen - out.length; if (avail >= 3) { out += " " + next.slice(0, avail - 2) + "."; }
-        break;
-    }
-    return out;
-}
-function fmt(num, dec = 0, pre = "", suf = "") {
-    const n = Number(num || 0);
-    return pre + n.toLocaleString('pt-BR', { minimumFractionDigits: dec, maximumFractionDigits: dec }) + suf;
-}
-
-// ===== Renderiza uma linha com 3 cards (colunas bootstrap)
-function renderTop3Row(targetRowSel, cards) {
-    const $row = $(targetRowSel);
-    const cols = cards.map((c, i) => `<div class="col-md-4 col-12 mb-3"><div id="__top3_${c.id || ('c' + i)}"></div></div>`).join("");
-    $row.append(`<div class="row w-100 mx-0">${cols}</div>`);
-    cards.forEach((cfg, i) => {
-        renderTop3Card({
-            container: `#__top3_${cfg.id || ('c' + i)}`,
-            data: cfg.data, field: cfg.field,
-            title: cfg.title, icon: cfg.icon,
-            decimals: cfg.decimals || 0, prefix: cfg.prefix || "", suffix: cfg.suffix || ""
-        });
-    });
-}
-
-function renderTop3Card({
-    container, data, field, title, icon = "🏆",
-    decimals = 0, prefix = "", suffix = "", compactLen = 16,
-    bare = false // <= novo
-}) {
-    const rows = Array.isArray(data) ? data.slice() : [];
-    rows.sort((a, b) => (Number(b[field]) || 0) - (Number(a[field]) || 0));
-    const top3 = rows.slice(0, 3);
-    const total = rows.reduce((s, r) => s + (Number(r[field]) || 0), 0);
-    const maxVal = top3.reduce((m, r) => Math.max(m, Number(r[field]) || 0), 0) || 1;
-    // === EMPTY STATE (sem dados no período) ===
-    const hasAnyValue = top3.some(r => Number(r?.[field]) > 0);
-    if (!hasAnyValue) {
-        const emptyHtml = `<div class="text-center py-3 text-muted">Sem dados no período</div>`;
-        // se o card for "bare" (sem cabeçalho), renderiza só a mensagem
-        // senão, renderiza mensagem dentro de um card simples
-        if (bare) {
-            $(container).html(emptyHtml);
-        } else {
-            $(container).html(`
-            <div class="top3-card dense">
-                <div class="top3-list">${emptyHtml}</div>
-            </div>
-            `);
-        }
-        return; // não continua o render
-    }
-
-    let open = "", head = "", close = "";
-    if (!bare) {
-        open = `<div class="top3-card">`;
-        head = `<div class="top3-head">
-              <div class="left"><span class="icon">${icon}</span><span>${title || ""}</span></div>
-            </div>`;
-        close = `</div>`;
-    }
-
-    let html = `${open}${head}<div class="top3-list">`;
-    const medalCls = ["gold", "silver", "bronze"];
-
-    function line(i, r) {
-        const v = r ? Number(r[field]) || 0 : 0;
-        const share = total > 0 ? (v / total) * 100 : 0;
-        const name = r ? compactNameDefault(r.name, compactLen) : "—";
-        const barPct = maxVal > 0 ? (v / maxVal) * 100 : 0;
-        const rankCls = i === 0 ? 'gold' : (i === 1 ? 'silver' : 'bronze');
-        return `
-      <div class="top3-item ${rankCls}">
-        <div class="top3-medal ${medalCls[i]}">${i + 1}</div>
-        <div>
-          <div class="top3-name" title="${r ? (r.name || '').replace(/"/g, '&quot;') : ''}">${name}</div>
-          <div class="top3-sub">${r ? fmt(share, 1, "", "%") : "—"} de participação</div>
-        </div>
-        <div class="top3-right">${r ? fmt(v, decimals, prefix, suffix) : "—"}</div>
-        <div class="top3-bar-wrap"><div class="top3-bar"><span style="width:0%"></span></div></div>
-      </div>`;
-    }
-
-    for (let i = 0; i < 3; i++) html += line(i, top3[i]);
-    html += `</div>${close}`;
-
-    $(container).html(html);
-
-    // anima a barra
-    $(container).find(".top3-item").each(function (i) {
-        const $bar = $(this).find(".top3-bar > span");
-        const v = top3[i] ? Number(top3[i][field]) || 0 : 0;
-        const pct = maxVal > 0 ? (v / maxVal) * 100 : 0;
-        setTimeout(() => $bar.css("width", pct + "%"), 50 + i * 80);
-    });
-}
-
-
-function renderTop3CardToggle({ container, data, title, icon = "🏆", fields }) {
-    $(container).html(`
-    <div class="top3-card dense">
-      <div class="top3-head">
-        <div class="left"><span class="icon">${icon}</span><span>${title}</span></div>
-        <div class="btn-group btn-group-sm modes" role="group">
-          ${fields.map((f, i) => `
-            <button class="btn btn-xs ${i ? 'btn-light' : 'btn-primary active'}"
-                    data-field="${f.key}" data-decimals="${f.decimals || 0}"
-                    data-prefix="${f.prefix || ''}" data-suffix="${f.suffix || ''}">
-              ${f.label}
-            </button>`).join("")}
-        </div>
-      </div>
-      <div class="top3-slot"></div>
-    </div>`);
-
-    const renderMode = f => renderTop3Card({
-        container: container + " .top3-slot",
-        data, field: f.key, decimals: f.decimals || 0, prefix: f.prefix || "", suffix: f.suffix || "",
-        bare: true // <= aqui! só a lista, sem cabeçalho/ícone
-    });
-
-    renderMode(fields[0]);
-    $(container).on('click', '.modes .btn', function () {
-        $(this).addClass('btn-primary active').removeClass('btn-light')
-            .siblings().removeClass('btn-primary active').addClass('btn-light');
-        renderMode({
-            key: $(this).data('field'),
-            decimals: Number($(this).data('decimals') || 0),
-            prefix: $(this).data('prefix') || '',
-            suffix: $(this).data('suffix') || '',
-        });
-    });
-}
-
-// memória simples do filtro atual
-window.__top3FiltroAtivo = null;
-// aplica/limpa filtro nas três tabelas (#card01/#card02/#card03)
-function aplicarFiltroTop3(nome) {
-    const alvo = (nome || "").toLowerCase().trim();
-    ['#card01', '#card02', '#card03'].forEach(sel => {
-        const $rows = $(sel).find('tbody tr');
-        if (!alvo) {
-            $rows.removeClass('rk-row-hide'); // mostra tudo
-            return;
-        }
-        $rows.each(function () {
-            const $nm = $(this).find('.rk-name');
-            const txt = ($nm.attr('title') || $nm.text() || "").toLowerCase();
-            $(this).toggleClass('rk-row-hide', !txt.includes(alvo));
-        });
-    });
-}
-
-// clique em qualquer item do Top3
-$(document).on('click', '.top3-item', function () {
-    const nome = $(this).find('.top3-name').attr('title') || $(this).find('.top3-name').text();
-    const mesmo = (window.__top3FiltroAtivo || "").toLowerCase() === (nome || "").toLowerCase();
-    window.__top3FiltroAtivo = mesmo ? null : nome;     // toggle
-    aplicarFiltroTop3(window.__top3FiltroAtivo);
-});
-
-
-
