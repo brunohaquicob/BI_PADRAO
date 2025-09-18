@@ -24,20 +24,27 @@ $(document).ready(function () {
         if (window.__dadosPainel) tratarRetorno2(window.__dadosPainel);
     });
 
-    $('#topn_metas').on('input change', function () {
-        const n = Number($(this).val() || 3);
-        setTopN(n);
-        if (getMetaMode() === 'topn' && window.__dadosPainel) {
-            tratarRetorno2(window.__dadosPainel);
-        }
-    });
+    $('#topn_metas').on('input change', debounce(() => {
+        setTopN(Number($('#topn_metas').val() || 3));
+        if (getMetaMode() === 'topn' && window.__dadosPainel) tratarRetorno2(window.__dadosPainel);
+    }, 200));
+
+    $('#topn_factor').on('input change', debounce(() => {
+        if (getMetaMode() === 'topn' && window.__dadosPainel) tratarRetorno2(window.__dadosPainel);
+    }, 200));
 
     // salvar valores manuais conforme digita (e re-render só se for modo manual)
-    $('.js-meta').on('input change', function () {
-        saveManualMetas();
+    // cria a função debounced
+    const reRenderIfManual = debounce(() => {
         if (getMetaMode() === 'manual' && window.__dadosPainel) {
             tratarRetorno2(window.__dadosPainel);
         }
+    }, 200);
+
+    // salva valores e dispara re-render com debounce
+    $('.js-meta').on('input change', function () {
+        saveManualMetas();
+        reRenderIfManual();
     });
 
     $('#btnBuscarDados').click(function () {
@@ -52,9 +59,6 @@ $(document).ready(function () {
         onRefresh: __buscarDados
     });
 });
-
-
-
 
 async function __buscarDados() {
     let idForm = 'form_filtros_pesquisa';
@@ -315,11 +319,18 @@ function getMetasTop3(dados) {
     };
 }
 
-function getMetasEffective(dados) {
-    return (getMetaMode() === 'topn')
-        ? getMetasTopN(dados, getTopN())
-        : getMetas();
+function hasAnyMeta(m) {
+    const vals = [m.ac.hoje, m.ac.mes, m.acor.hoje, m.acor.mes, m.pag.hoje, m.pag.mes];
+    return vals.some(v => Number(v) > 0);
 }
+function getMetasEffective(d) {
+    if (getMetaMode() === 'topn') {
+        const m = getMetasTopN(d, getTopN());
+        return hasAnyMeta(m) ? m : getMetas(); // fallback para manual
+    }
+    return getMetas();
+}
+
 
 // reimplementa a antiga getMetasTop3 como genérica TopN
 function getMetasTopN(dados, topN = 3) {
@@ -414,12 +425,14 @@ function mediaTopN({ data, key, media_de = 3 }) {
     return soma / topN.length; // divide pelo que existir (1..N)
 }
 
-$('.js-meta').on('change input', function () {
-    if (window.__dadosPainel) {
-        // re-render com novas metas
-        tratarRetorno2(window.__dadosPainel);
-    }
-});
+function debounce(fn, ms = 200) {
+    let t;
+    return (...args) => {
+        clearTimeout(t);
+        t = setTimeout(() => fn(...args), ms);
+    };
+}
+
 // ===== Helpers
 function compactNameDefault(nome, maxLen = 15) {
     if (!nome) return "";

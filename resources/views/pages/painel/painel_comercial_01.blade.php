@@ -678,7 +678,11 @@
             }
 
 
-            /* esconde a linha de participação em telas baixas */
+            .js-meta.disabled {
+                background: #f8f9fa !important;
+                opacity: .75;
+                cursor: not-allowed;
+            }
         </style>
     @endpush
     @push('js')
