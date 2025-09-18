@@ -55,10 +55,12 @@ class DashboardPadraoController extends Controller {
                 ta.ID_Acordo,
                 ta.ID_Usuario_Acordo,
                 ta.CD_Situacao,
-                to2.strNome as grupo,
-                to2.intCodOperacao as cod_grupo,
-                tc.intCodCarteira as cod_sub_grupo,
-                tc.strFantasia as sub_grupo,
+                to2.strNome as sub_grupo,
+                to2.intCodOperacao as cod_sub_grupo,
+                tc.intCodCarteira,
+                tc.strFantasia as carteira,
+                ISNULL(ass.strFantasia, 'NAO CADASTRADA') as grupo,
+                c.cod_assessoria cod_grupo,
                 op.strNome as operador,
                 op.strUsuario as cod_operador,
                 ta.VL_Acordo as vl_acordo,
@@ -87,8 +89,10 @@ class DashboardPadraoController extends Controller {
             INNER JOIN TB_Operacao to2 on to2.intCodOperacao = ta.OPERACAO
             INNER JOIN TB_Operador op on op.strUsuario = ta.ID_Usuario_Acordo
             INNER JOIN TB_Carteira tc on tc.intCodCarteira = pm.CARTEIRA
+            LEFT JOIN controle_asses_acordo_aqc as c ON c.cod_acordo_topone = ta.ID_Acordo 
+            LEFT JOIN TB_Assessoria ass ON ass.cod_asses_ext = ISNULL(NULLIF(c.cod_assessoria, 0), 195)
             WHERE 1 = 1 
-            and ta.DT_Registro between ? and ? 
+            AND ta.DT_Registro between ? and ? 
             -- and ta.DT_Cancel = ?
             ";
     }
@@ -112,6 +116,7 @@ class DashboardPadraoController extends Controller {
         unset($ar_sub['sub']);
         $retorno = [];
         $retorno_linhas = [];
+        // dd($dados);
         foreach ($dados as $key => $v) {
             $v['vl_quebra'] = 0;
             $v['qtd_quebra'] = 0;
