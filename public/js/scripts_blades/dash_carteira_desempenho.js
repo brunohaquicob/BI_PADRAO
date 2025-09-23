@@ -257,7 +257,7 @@ function buildDrilldownHTML({
     const leftCards = `
                     ${hiImpl ? infoBox('primary', 'Maior valor Implantado (R$)', fmtBRL(hiImpl.v), hiImpl.row.group || '') : ''}
                     ${hiAberto ? infoBox('warning', 'Maior valor em Aberto (R$)', fmtBRL(hiAberto.v), hiAberto.row.group || '') : ''}
-                    ${hiTkt ? infoBox('warning', 'Maior Tiket Médio (R$)', fmtBRL(hiTkt.v), hiTkt.row.group || '') : ''}
+                    ${hiTkt ? infoBox('warning', 'Maior Ticket Médio (R$)', fmtBRL(hiTkt.v), hiTkt.row.group || '') : ''}
                 `;
     const rightCards = `
                     ${hiRecVl ? infoBox('success', 'Melhor valor de Recuperação (R$)', fmtBRL(hiRecVl.v), hiRecVl.row.group || '') : ''}
