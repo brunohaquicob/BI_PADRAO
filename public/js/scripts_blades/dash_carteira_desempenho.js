@@ -266,72 +266,97 @@ function buildDrilldownHTML({
                 `;
 
     // colunas
-    const cols = [{
-        key: 'group',
-        label: 'Faixa',
-        type: 'string',
-        align: 'text-left'
-    },
-    {
-        key: 'devedor_implantado',
-        label: 'Dev.Imp',
-        type: 'int',
-        align: 'text-center'
-    },
-    {
-        key: 'contrato_implantado',
-        label: 'Ctr.Imp',
-        type: 'int',
-        align: 'text-center'
-    },
-    {
-        key: 'valor_implantado',
-        label: 'Implantado',
-        type: 'currency',
-        align: 'text-right'
-    },
-    {
-        key: 'ticket_medio',
-        label: 'Ticket',
-        type: 'currency',
-        align: 'text-right'
-    },
-    {
-        key: 'valor_aberto',
-        label: 'Aberto',
-        type: 'currency',
-        align: 'text-right'
-    },
-    {
-        key: 'pct_aberto',
-        label: '% Aberto',
-        type: 'percent',
-        align: 'text-center'
-    },
-    {
-        key: 'valor_recuperado',
-        label: 'Recuperado',
-        type: 'currency',
-        align: 'text-right'
-    },
-    {
-        key: 'pct_recuperado',
-        label: '% Recup.',
-        type: 'percent',
-        align: 'text-center'
-    },
-    {
-        key: 'valor_em_acordo',
-        label: 'Em Acordo',
-        type: 'currency',
-        align: 'text-right'
-    },
-    {
-        key: 'valor_sem_acordo',
-        label: 'Sem Acordo',
-        type: 'currency',
-        align: 'text-right'
-    },
+    const cols = [
+        {
+            key: 'group',
+            label: 'Faixa',
+            type: 'string',
+            align: 'text-left'
+        },
+        {
+            key: 'devedor_implantado',
+            label: 'Dev.Imp',
+            type: 'int',
+            align: 'text-center'
+        },
+        {
+            key: 'contrato_implantado',
+            label: 'Ctr.Imp',
+            type: 'int',
+            align: 'text-center'
+        },
+        {
+            key: 'valor_implantado',
+            label: 'Implantado',
+            type: 'currency',
+            align: 'text-right'
+        },
+        {
+            key: 'ticket_medio',
+            label: 'Ticket',
+            type: 'currency',
+            align: 'text-right'
+        },
+        {
+            key: 'valor_aberto',
+            label: 'Aberto',
+            type: 'currency',
+            align: 'text-right'
+        },
+        {
+            key: 'pct_aberto',
+            label: '% Aberto',
+            type: 'percent',
+            align: 'text-center'
+        },
+        {
+            key: 'valor_recuperado',
+            label: 'Recuperado',
+            type: 'currency',
+            align: 'text-right'
+        },
+        {
+            key: 'pct_recuperado',
+            label: '% Recup.',
+            type: 'percent',
+            align: 'text-center'
+        },
+        {
+            key: 'valor_em_acordo',
+            label: 'Em Acordo',
+            type: 'currency',
+            align: 'text-right'
+        },
+        {
+            key: 'valor_sem_acordo',
+            label: 'Sem Acordo',
+            type: 'currency',
+            align: 'text-right'
+        },
+        {
+            key: 'qtd_devedores_acionados',
+            label: 'Dev.Acionado',
+            type: 'int',
+            align: 'text-center'
+        },
+        {
+            key: 'prc_dev_acionado',
+            label: '% Acionado',
+            type: 'percent',
+            align: 'text-center'
+        },
+        {
+            key: 'qtd_acionamentos',
+            label: 'Qtd.Acionamentos',
+            type: 'int',
+            align: 'text-center'
+        },
+        {
+            key: 'spn_acionamento',
+            label: 'Med.Acionamento',
+            type: 'number',
+            align: 'text-center'
+        },
     ];
 
     const fmtValue = (v, t) =>
@@ -352,8 +377,11 @@ function buildDrilldownHTML({
         const sum = k => rows.reduce((s, r) => s + toN(r[k]), 0);
         const totVal = sum('valor_implantado');
         const totCtr = sum('contrato_implantado');
+        const totDev = sum('devedor_implantado');
         const totAberto = sum('valor_aberto');
         const totRec = sum('valor_recuperado');
+        const totDevAci = sum('qtd_devedores_acionados');
+        const totAci = sum('qtd_acionamentos');
         return {
             devedor_implantado: sum('devedor_implantado'),
             contrato_implantado: totCtr,
@@ -365,6 +393,10 @@ function buildDrilldownHTML({
             pct_recuperado: totVal ? (totRec / totVal * 100) : 0,
             valor_em_acordo: sum('valor_em_acordo'),
             valor_sem_acordo: sum('valor_sem_acordo'),
+            qtd_devedores_acionados: totDevAci,
+            prc_dev_acionado: totDev ? (totDevAci / totDev * 100) : 0,
+            qtd_acionamentos: totAci,
+            spn_acionamento: totDevAci ? (totAci / totDevAci) : 0,
         };
     })();
 
@@ -724,34 +756,37 @@ function calculaArrayTable(rows, keyCol = 1, groupCol = 2, ordemFaixas) {
     const tooltipExtraKey = Utilitarios.pieBreakdownByMulti(rows, {
         keyCol: keyCol,
         groupCol: groupCol,
-        valueCols: [{
-            name: 'devedor_implantado',
-            spec: 3
-        },
-        {
-            name: 'contrato_implantado',
-            spec: 4
-        },
-        {
-            name: 'valor_implantado',
-            spec: 9
-        },
-        {
-            name: 'valor_aberto',
-            spec: 10
-        },
-        {
-            name: 'valor_recuperado',
-            spec: 11
-        },
-        {
-            name: 'valor_em_acordo',
-            spec: 13
-        },
-        {
-            name: 'valor_sem_acordo',
-            spec: 14
-        },
+        valueCols: [
+            {
+                name: 'devedor_implantado',
+                spec: 3
+            },
+            {
+                name: 'contrato_implantado',
+                spec: 4
+            },
+            {
+                name: 'valor_implantado',
+                spec: 9
+            },
+            {
+                name: 'valor_aberto',
+                spec: 10
+            },
+            {
+                name: 'valor_recuperado',
+                spec: 11
+            },
+            {
+                name: 'valor_em_acordo',
+                spec: 13
+            },
+            {
+                name: 'valor_sem_acordo',
+                spec: 14
+            },
+            { name: 'qtd_devedores_acionados', spec: 15 },
+            { name: 'qtd_acionamentos', spec: 17 },
         ],
         keyTransform: k => (k.includes('->') ? k.split('->')[1].trim() : k),
         groupTransform: g => (String(g).includes('->') ? String(g).split('->')[1].trim() : g),
@@ -769,6 +804,15 @@ function calculaArrayTable(rows, keyCol = 1, groupCol = 2, ordemFaixas) {
             name: 'pct_aberto',
             fn: s => (s.valor_implantado > 0 ? (s.valor_aberto / s.valor_implantado) * 100 : 0)
         },
+        {
+            name: 'prc_dev_acionado',   // % Acionado
+            fn: s => (s.devedor_implantado > 0 ? (s.qtd_devedores_acionados / s.devedor_implantado) * 100 : 0)
+        },
+        {
+            name: 'spn_acionamento',    // Acionamentos por devedor acionado
+            fn: s => (s.qtd_devedores_acionados > 0 ? (s.qtd_acionamentos / s.qtd_devedores_acionados) : 0)
+        },
+
         ],
 
         columnsOrder: [
@@ -776,7 +820,8 @@ function calculaArrayTable(rows, keyCol = 1, groupCol = 2, ordemFaixas) {
             'valor_implantado', 'ticket_medio',
             'valor_aberto', 'pct_aberto',
             'valor_recuperado', 'pct_recuperado',
-            'valor_em_acordo', 'valor_sem_acordo'
+            'valor_em_acordo', 'valor_sem_acordo', 'qtd_devedores_acionados', 'prc_dev_acionado',
+            'qtd_acionamentos', 'spn_acionamento'
         ],
 
         groupOrder: ordemFaixas, // <- ordem mandada por você
