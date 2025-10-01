@@ -473,4 +473,42 @@ class ControllerUtils extends Controller {
         session()->flash('custom_error', 'Erro: ' . $msg);
         abort($codigo);
     }
+
+    public static function __arrumaDadosDataTableJS($ar_config, $ar_dados, $key_return = 'tabela', $filtrosHeader = []) {
+
+        if (empty($ar_config) || empty($ar_dados)) {
+            throw new Exception("Dados não localizados para configrar tabela!", 1);
+        }
+
+        $pos = 0;
+        $keys = array_keys($ar_dados[0]);
+        $config = [];
+        foreach ($ar_config as $key => $value) {
+            if (!in_array($key, $keys)) {
+                continue;
+            }
+            $value["pos"] = $pos;
+            //nome Nome da coluna
+            //alinhamento Pode ser text-center, text-left, text-right
+            //decimalPlaces Pode ser null, qtd decimal, date, datetime
+            //somar_footer true ou false
+            $config[$key] = ["pos" => $pos, "nome" => $value[0], "alinhamento" => $value[1], "decimalPlaces" => $value[2], "somar_footer" => $value[3]];
+            $pos++;
+        }
+        if (empty($config)) {
+            return false;
+        }
+
+        //Dados
+        $dados = [];
+        foreach ($ar_dados as $linha) {
+            $temp = [];
+            foreach ($config as $chave => $info) {
+                $temp[$info['pos']] = !empty($linha[$chave]) ? $linha[$chave] : "";
+            }
+            ksort($temp); // Garante ordem correta se posições forem fora de ordem
+            $dados[] = array_values($temp); // Só se precisar garantir array indexado 0,1,2,...
+        }
+        return ([$key_return => ["dados" => $dados, "colunas_config" => array_values($config), "filtrosHeader" => $filtrosHeader]]);
+    }
 }

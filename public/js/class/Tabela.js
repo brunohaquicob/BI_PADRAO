@@ -277,8 +277,25 @@ function __renderDataTable(
                 if (d == null || d === '') return '';
                 if (type !== 'display') return d;
 
-                if (cfg.decimalPlaces === 'date') return moment(d).isValid() ? moment(d).format('DD/MM/YYYY') : '';
-                if (cfg.decimalPlaces === 'datetime') return moment(d).isValid() ? moment(d).format('DD/MM/YYYY HH:mm:ss') : '';
+                // datas normais (ISO, timestamp, etc.)
+                if (cfg.decimalPlaces === 'date') {
+                    return moment(d).isValid() ? moment(d).format('DD/MM/YYYY') : '';
+                }
+
+                // inteiros no formato YYYYMMDD (ex.: 20250931)
+                if (cfg.decimalPlaces === 'dateint') {
+                    const s = String(d).trim();
+                    // aceita exatamente 8 dígitos YYYYMMDD
+                    if (/^\d{8}$/.test(s)) {
+                        const m = moment(s, 'YYYYMMDD', true); // parse estrito
+                        return m.isValid() ? m.format('DD/MM/YYYY') : '';
+                    }
+                    return '';
+                }
+
+                if (cfg.decimalPlaces === 'datetime') {
+                    return moment(d).isValid() ? moment(d).format('DD/MM/YYYY HH:mm:ss') : '';
+                }
                 if (typeof cfg.decimalPlaces === 'number' && !isNaN(d)) {
                     return Number(d).toLocaleString('pt-BR', {
                         minimumFractionDigits: cfg.decimalPlaces,
@@ -287,6 +304,7 @@ function __renderDataTable(
                 }
                 return d;
             }
+
         })),
 
         destroy: true,
@@ -506,7 +524,7 @@ class DTFiltrados {
     hookFilteredRows(callback, options = {}) {
         // atalho: permitir passar número direto como delay
         if (typeof options === 'number') options = { delay: options };
-        
+
         const mySeq = (++this._runSeq || (this._runSeq = 1)); // evita NaN por via das dúvidas
 
         const {
