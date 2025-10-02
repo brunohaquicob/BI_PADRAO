@@ -91,6 +91,8 @@ class CredoresController extends Controller {
             $ar_fields['cpf_cnpj']          = 'nullable|string';
             $ar_fields['bor_numero']        = 'nullable|string';
             $ar_fields['aco_codigo']        = 'nullable|string';
+            $ar_fields['dias_pag_ini']      = 'required|int';
+            $ar_fields['dias_pag_fim']      = 'required|int';
 
             $ar_fields['rangedatas']     = 'required|array';
             $ar_fields['rangedatas.*']   = 'date_format:Y-m-d';
@@ -106,6 +108,8 @@ class CredoresController extends Controller {
                 "data_fim"      => $this->dataFinal,
                 "rel_tipo_data" => $dadosTratados['rel_tipo_data'],
                 "limitar_data"  => $dadosTratados['limitar_data'],
+                "dias_pag_ini"  => $dadosTratados['dias_pag_ini'],
+                "dias_pag_fim"  => $dadosTratados['dias_pag_fim'],
                 "rel_carteira"  => !empty($dadosTratados['rel_carteira']) ? $dadosTratados['rel_carteira'] : []
             ];
 

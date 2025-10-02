@@ -22,19 +22,43 @@
             <form id="form_filtros_pesquisa">
 
                 <div class="row">
-                    <div class="col-md-4">
+                    <div class="col-md-3">
                         <x-calendario-component id='dateRangePicker' event-name='dateRangeSelected' :options="[]" type='input-com-check' autoApply='false' single='N' label='Data Baixa' />
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-3">
                         <div class="form-group">
-                            <label for="rel_tipo_data">Considerar:</label>
-                            <select class="form-control selectpickerNovo" id="rel_tipo_data" name="rel_tipo_data">
-                                <option value="B" selected="">Data Cadastro da Baixa</option>
-                                <option value="C">Data Pagamento Credor</option>
-                            </select>
+                            <label class="">Dias – Pagamentos</label>
+                            <div class="form-row">
+                                <div class="col">
+                                    <div class="input-group">
+                                        <div class="input-group-prepend"><span class="input-group-text">Inicial</span></div>
+                                        <input type="number" min="0" step="0.01" class="form-control js-meta" id="dias_pag_ini" name="dias_pag_ini" value="0">
+                                    </div>
+                                </div>
+                                <div class="col">
+                                    <div class="input-group">
+                                        <div class="input-group-prepend"><span class="input-group-text">Final</span></div>
+                                        <input type="number" min="0" step="1" class="form-control js-meta" id="dias_pag_fim" name="dias_pag_fim" value="0">
+                                    </div>
+                                </div>
+                            </div>
+                            <small class="text-muted d-block mt-1">
+                                Deixe “0”, para desconsiderar.
+                            </small>
                         </div>
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-3">
+                        <div class="form-group">
+                            <label for="rel_tipo_data">Considerar:</label>
+                            <div class="form-row">
+                                <select class="form-control selectpickerNovo" id="rel_tipo_data" name="rel_tipo_data">
+                                    <option value="B" selected="">Data Cadastro da Baixa</option>
+                                    <option value="C">Data Pagamento Credor</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
                         <div class="form-group">
                             <label for="rel_carteira">Equipe Loja:</label>
 
@@ -154,7 +178,7 @@
 @once
     @push('css')
         <style>
-        
+
         </style>
     @endpush
     @push('js')
