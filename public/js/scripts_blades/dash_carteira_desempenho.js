@@ -280,6 +280,18 @@ function buildDrilldownHTML({
             align: 'text-center'
         },
         {
+            key: 'devedor_novo',
+            label: 'Dev.Novo',
+            type: 'int',
+            align: 'text-center'
+        },
+        {
+            key: 'pct_dev_novo',
+            label: '% Dev.Novo',
+            type: 'percent',
+            align: 'text-center'
+        },
+        {
             key: 'contrato_implantado',
             label: 'Ctr.Imp',
             type: 'int',
@@ -382,8 +394,12 @@ function buildDrilldownHTML({
         const totRec = sum('valor_recuperado');
         const totDevAci = sum('qtd_devedores_acionados');
         const totAci = sum('qtd_acionamentos');
+        const totdevnovo = sum('devedor_novo');
+        const totdev = sum('devedor_implantado');
         return {
-            devedor_implantado: sum('devedor_implantado'),
+            devedor_implantado: totdev,
+            devedor_novo: totdevnovo,
+            pct_dev_novo: totdev ? (totdevnovo / totdev * 100)  : 0,
             contrato_implantado: totCtr,
             valor_implantado: totVal,
             ticket_medio: totCtr ? (totVal / totCtr) : 0,
@@ -764,7 +780,7 @@ function calculaArrayTable(rows, keyCol = 1, groupCol = 2, ordemFaixas) {
             },
             {
                 name: 'contrato_implantado',
-                spec: 4
+                spec: 5
             },
             {
                 name: 'valor_implantado',
@@ -788,6 +804,7 @@ function calculaArrayTable(rows, keyCol = 1, groupCol = 2, ordemFaixas) {
             },
             { name: 'qtd_devedores_acionados', spec: 15 },
             { name: 'qtd_acionamentos', spec: 17 },
+            { name: 'devedor_novo', spec: 18 },
         ],
         keyTransform: k => (k.includes('->') ? k.split('->')[1].trim() : k),
         groupTransform: g => (String(g).includes('->') ? String(g).split('->')[1].trim() : g),
@@ -813,11 +830,15 @@ function calculaArrayTable(rows, keyCol = 1, groupCol = 2, ordemFaixas) {
             name: 'spn_acionamento',    // Acionamentos por devedor acionado
             fn: s => (s.qtd_devedores_acionados > 0 ? (s.qtd_acionamentos / s.qtd_devedores_acionados) : 0)
         },
+        {
+            name: 'pct_dev_novo',
+            fn: s => (s.devedor_implantado > 0 ? (s.devedor_novo / s.devedor_implantado) * 100 : 0)
+        },
 
         ],
 
         columnsOrder: [
-            'devedor_implantado', 'contrato_implantado',
+            'devedor_implantado', 'devedor_novo','pct_dev_novo', 'contrato_implantado',
             'valor_implantado', 'ticket_medio',
             'valor_aberto', 'pct_aberto',
             'valor_recuperado', 'pct_recuperado',
