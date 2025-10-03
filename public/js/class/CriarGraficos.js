@@ -1617,6 +1617,9 @@ class HighchartsFlexible3 {
             useHTML: true,
             borderWidth: 0,
             outside: true,
+            followPointer: true,   // segue o mouse (menos “sumiços” ao sair do ponto)
+            // hideDelay: 200,       // segura um pouco antes de esconder
+            animation: false,      // evita piscadas
             formatter: function () {
                 const rawKey = (xType === 'datetime') ? this.x : this.key;
                 let keyLabel = this.key;

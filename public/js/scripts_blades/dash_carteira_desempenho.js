@@ -626,10 +626,11 @@ function graficoPorImplantacao(ar_dados, id, title, subtitle = 'Aberto/Recebidos
         tooltip: {
             mode: 'hover-native',
             decimals: 2,
-            hoverSummary: true
+            hoverSummary: true,
         },
         plotOptions: {
             series: {
+                stickyTracking: true,
                 marker: {
                     radius: 2.5
                 }
