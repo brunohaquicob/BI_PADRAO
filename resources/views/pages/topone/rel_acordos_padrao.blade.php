@@ -130,9 +130,9 @@
                             $('#' + div_retorno).html(response.data.htmlDownload);
                         } else {
                             let opts = {
-                                fixedColumns: {
-                                    leftColumns: 2
-                                }
+                            //    fixedColumns: {
+                            //        leftColumns: 2
+                            //    }
                             };
                             __renderDataTable(response.data.tabela1, div_retorno, opts);
                         }

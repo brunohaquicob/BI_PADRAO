@@ -47,6 +47,7 @@ class ToponeRelatoriosController extends Controller {
                 -- próximo vencimento >= hoje (se existir)
                 MIN(CASE WHEN tap.DT_Pago = 0 AND tap.DT_Vencto >= CAST(CONVERT(varchar(8), GETDATE(), 112) AS int) THEN tap.DT_Vencto END) AS prox_venc_int_ge_hoje,
                 -- fallback: menor vencimento em aberto (mesmo que já vencido)
+                SUM(CASE WHEN tap.DT_Pago = 0 AND tap.DT_Vencto < CAST(CONVERT(varchar(8), GETDATE(), 112) AS int) THEN tap.VL_Apagar END) AS vl_atrasado,
                 MIN(CASE WHEN tap.DT_Pago = 0 THEN tap.DT_Vencto END) AS prox_venc_int_any
             FROM TB_Acordos_Pagto AS tap
             GROUP BY tap.ID_Acordo
@@ -95,6 +96,7 @@ class ToponeRelatoriosController extends Controller {
                 pgto.total_apagar_pago as vl_pago,
                 pgto.total_apagar - pgto.total_apagar_pago as vl_aberto,
                 pgto.total_pago as vl_pago_real,
+                ISNULL(pgto.vl_atrasado, 0) as vl_atrasado,
                 -- Próximo vencimento em aberto como DATE
                 CONVERT(date, CONVERT(varchar(8), COALESCE(pgto.prox_venc_int_ge_hoje, pgto.prox_venc_int_any)), 112) AS prox_vencimento_aberto
             FROM TB_Acordos AS ta
@@ -106,6 +108,7 @@ class ToponeRelatoriosController extends Controller {
             LEFT JOIN controle_asses_acordo_aqc as c ON c.cod_acordo_topone = ta.ID_Acordo 
             LEFT JOIN TB_Assessoria ass ON ass.cod_asses_ext = ISNULL(NULLIF(c.cod_assessoria, 0), 195)
             WHERE 1 = 1 
+            and (ta.DT_Cancel > ta.DT_Registro or ta.DT_Cancel = 0)
             AND ta.DT_Registro between ? and ? 
             -- and ta.DT_Cancel = ?
             ";
@@ -161,6 +164,7 @@ class ToponeRelatoriosController extends Controller {
             "VL_Financiado"             => ["VL.FINANCIADO",  "text-right", 2, false],
             "vl_pago"                   => ["VL.PAGO",  "text-right", 2, true],
             "vl_aberto"                 => ["VL.ABERTO",  "text-right", 2, true],
+            "vl_atrasado"               => ["VL.ATRASADO",  "text-right", 2, true],
         ];
     }
 }
